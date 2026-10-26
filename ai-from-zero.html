@@ -1,0 +1,1322 @@
+<title>AI From Zero</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+/* Layout: sticky HUD, then one screen at a time (world map → mission → rapid fire → boss → victory), centered column */
+:root{
+  --paper:#EDF0EA; --card:#FFFFFF; --ink:#1A1E29; --muted:#5B6371; --line:#D3D8CF;
+  --accent:#3346E8; --accent-ink:#FFFFFF; --hi:#FFB21E; --good:#16875A; --bad:#C93A2E; --soft:#E4E8FA;
+  --t0:#FFD6C4; --t1:#C6E8D2; --t2:#CDD8FF; --t3:#FFE8A3; --t4:#EAD2F6; --t5:#C5EBEE;
+  --cat:#F07828; --dog:#5A6EFF; --pink:#E8508C; --teal:#1FA7A0;
+  --display:"Bricolage Grotesque","Segoe UI",system-ui,sans-serif;
+  --body:"Atkinson Hyperlegible","Segoe UI",system-ui,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --paper:#101318; --card:#191D25; --ink:#ECEEE7; --muted:#9BA2AE; --line:#2B303B;
+  --accent:#8E9BFF; --accent-ink:#0D1020; --hi:#FFC550; --good:#4CC98F; --bad:#FF7B6F; --soft:#232A47;
+  --t0:#5C3526; --t1:#22493A; --t2:#2E3B6E; --t3:#58481A; --t4:#48304F; --t5:#1E4A4E;
+  color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --paper:#101318; --card:#191D25; --ink:#ECEEE7; --muted:#9BA2AE; --line:#2B303B;
+  --accent:#8E9BFF; --accent-ink:#0D1020; --hi:#FFC550; --good:#4CC98F; --bad:#FF7B6F; --soft:#232A47;
+  --t0:#5C3526; --t1:#22493A; --t2:#2E3B6E; --t3:#58481A; --t4:#48304F; --t5:#1E4A4E;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--paper);color:var(--ink);font:16px/1.5 var(--body)}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:30;background:var(--paper)}
+button{font:inherit;color:inherit;cursor:pointer}
+button:disabled{cursor:not-allowed}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px;border-radius:6px}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0;letter-spacing:-.01em}
+.wrap{max-width:860px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+
+/* ---------- HUD ---------- */
+.hud{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--paper);border-bottom:1px solid var(--line)}
+.hud .wrap{display:flex;align-items:center;gap:8px;padding-block:10px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:8px;font-family:var(--display);font-weight:800;font-size:1.15rem;border:0;background:none;padding:0;margin-right:auto}
+.brand-mark{display:inline-flex;gap:2px}
+.brand-mark i{width:8px;height:18px;border-radius:3px;background:var(--t0)}
+.brand-mark i:nth-child(2){background:var(--t2)}.brand-mark i:nth-child(3){background:var(--t3)}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border-radius:99px;background:var(--card);border:1px solid var(--line);font-weight:700;font-size:.85rem;font-family:var(--mono)}
+button.pill:hover{border-color:var(--accent)}
+.xpbar{width:56px;height:7px;border-radius:99px;background:var(--line);overflow:hidden}
+.xpbar i{display:block;height:100%;width:0;background:var(--hi);transition:width .6s cubic-bezier(.2,.8,.2,1)}
+.starg{color:var(--hi)}
+main.wrap{padding-block:18px 0}
+
+/* ---------- shared ---------- */
+.btn{border:1px solid var(--line);background:var(--card);border-radius:12px;padding:10px 18px;font-weight:700;transition:transform .15s,background .2s,border-color .2s}
+.btn:hover:not(:disabled){border-color:var(--accent)}
+.btn:active:not(:disabled){transform:scale(.97)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);box-shadow:0 4px 0 color-mix(in srgb,var(--accent) 55%,var(--ink))}
+.btn.primary:active:not(:disabled){transform:translateY(3px);box-shadow:0 1px 0 color-mix(in srgb,var(--accent) 55%,var(--ink))}
+.btn.primary:disabled{background:var(--line);border-color:var(--line);color:var(--muted);box-shadow:none}
+.btn.ghost{background:transparent}
+.btn.small{padding:6px 10px;font-size:.82rem}
+.btn.go{animation:nudge 1.2s ease-in-out infinite}
+@keyframes nudge{50%{transform:translateY(-3px)}}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;padding:3px;gap:3px;background:var(--paper);flex-wrap:wrap}
+.seg-b{border:0;background:none;border-radius:8px;padding:7px 12px;font-weight:700;font-size:.9rem;color:var(--muted)}
+.seg-b.on{background:var(--card);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.15)}
+.tools{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-block:12px}
+.hint{color:var(--muted);font-size:.9rem;margin:8px 0 0}
+.lbl,.tag{font-family:var(--mono);font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 6px}
+.panel{border:1px solid var(--line);border-radius:12px;padding:14px;background:var(--paper);min-width:0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:20px;min-width:0}
+.scr{animation:enter .4s cubic-bezier(.2,.8,.2,1)}
+@keyframes enter{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@keyframes pop{from{opacity:0;transform:translateY(8px) scale(.96)}}
+@keyframes shake{25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+@keyframes floatup{to{transform:translateY(-60px);opacity:0}}
+@keyframes pulse{50%{box-shadow:0 0 0 10px color-mix(in srgb,var(--accent) 22%,transparent)}}
+.actbar{position:sticky;bottom:0;z-index:5;display:flex;justify-content:space-between;align-items:center;gap:12px;padding-top:14px;padding-bottom:calc(16px + env(safe-area-inset-bottom,0px));background:var(--paper);margin-top:8px}
+.bub{margin:0;padding:9px 13px;border-radius:14px;max-width:85%;width:fit-content;animation:pop .35s both}
+.bub.u{background:var(--accent);color:var(--accent-ink);margin-left:auto;border-bottom-right-radius:4px}
+.bub.ai{background:var(--soft);border-bottom-left-radius:4px}
+.divider{text-align:center;font-family:var(--mono);font-size:.75rem;color:var(--muted);border-top:1px dashed var(--line);padding-top:6px}
+.verdict{margin-top:12px;padding:10px 14px;border-radius:10px;background:color-mix(in srgb,var(--hi) 18%,var(--card));border:1px solid color-mix(in srgb,var(--hi) 50%,var(--line))}
+.flow{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.flow .f{padding:8px 12px;border-radius:10px;background:var(--paper);border:1px solid var(--line);font-weight:700}
+.flow .ar{color:var(--muted);font-family:var(--mono)}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.tile{border:1px solid var(--line);border-radius:12px;padding:14px;animation:pop .45s both;animation-delay:var(--d,0s)}
+.tile b{display:block;font-family:var(--display);font-size:1.4rem}
+.tile span{color:var(--muted);font-size:.9rem}
+.toast{position:fixed;left:50%;bottom:calc(90px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:60;background:var(--ink);color:var(--card);padding:10px 18px;border-radius:99px;font-weight:700;animation:pop .3s both;max-width:calc(100% - 32px);text-align:center}
+.xpfloat{position:fixed;z-index:60;font-family:var(--display);font-weight:800;color:var(--hi);font-size:1.4rem;pointer-events:none;animation:floatup 1.1s forwards;text-shadow:0 1px 0 var(--ink)}
+.confetti{position:fixed;inset:0;pointer-events:none;z-index:50;width:100%;height:100%}
+
+/* ---------- Tok the bot ---------- */
+.bot{width:46px;height:46px;flex:none;animation:bob 3s ease-in-out infinite}
+.bot .head{fill:var(--accent)}
+.bot .ant{stroke:var(--accent);stroke-width:2.5}
+.bot .tip{fill:var(--hi)}
+.bot .eyes circle{fill:var(--accent-ink);transform-origin:center;transform-box:fill-box;animation:blink 4s infinite}
+.bot path{fill:none;stroke:var(--accent-ink);stroke-width:2.4;stroke-linecap:round}
+.bot .m2,.bot .m3{display:none}
+.bot[data-mood="happy"] .m1,.bot[data-mood="oops"] .m1{display:none}
+.bot[data-mood="happy"] .m2{display:block}
+.bot[data-mood="oops"] .m3{display:block}
+.bot[data-mood="happy"]{animation:hop .5s 2}
+.bot[data-mood="oops"]{animation:shake .4s}
+@keyframes bob{50%{transform:translateY(-3px)}}
+@keyframes blink{0%,92%,100%{transform:scaleY(1)}95%{transform:scaleY(.1)}}
+@keyframes hop{50%{transform:translateY(-8px) rotate(-6deg)}}
+
+/* ---------- world map ---------- */
+.maphead{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:6px}
+.maphead h1{font-size:clamp(1.8rem,5vw,2.6rem);font-weight:800}
+.world{position:relative;max-width:560px;margin:0 auto}
+.world svg.trail{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.trail path{fill:none;stroke-width:6;stroke-linecap:round;vector-effect:non-scaling-stroke}
+.trail .p0{stroke:var(--line);stroke-dasharray:2 14}
+.trail .p1{stroke:var(--good);stroke-dasharray:2 14}
+.node{position:absolute;width:74px;height:74px;margin:-37px 0 0 -37px;border-radius:50%;border:0;background:var(--accent);color:var(--accent-ink);font-family:var(--display);font-weight:800;font-size:1.6rem;box-shadow:0 6px 0 color-mix(in srgb,var(--accent) 55%,var(--ink));transition:transform .15s,box-shadow .15s;display:grid;place-items:center}
+.node:active:not(:disabled){transform:translateY(4px);box-shadow:0 2px 0 color-mix(in srgb,var(--accent) 55%,var(--ink))}
+.node.cleared{background:var(--good);box-shadow:0 6px 0 color-mix(in srgb,var(--good) 55%,var(--ink));color:var(--card)}
+.node.locked{background:var(--line);color:var(--muted);box-shadow:0 6px 0 color-mix(in srgb,var(--line) 60%,var(--ink))}
+.node.cur{animation:pulse 1.6s ease-in-out infinite}
+.node.final{width:90px;height:90px;margin:-45px 0 0 -45px;background:var(--hi);color:var(--ink);box-shadow:0 6px 0 color-mix(in srgb,var(--hi) 55%,var(--ink))}
+.node.final.locked{background:var(--line);color:var(--muted)}
+.nlabel{position:absolute;width:150px;transform:translateY(-50%);line-height:1.2;pointer-events:none}
+.nlabel.r{margin-left:52px}
+.nlabel.l{transform:translate(calc(-100% - 52px),-50%);text-align:right}
+.nlabel b{display:block;font-family:var(--display);font-size:1.02rem}
+.nlabel small{color:var(--muted);font-size:.78rem}
+.nstars{color:var(--hi);letter-spacing:2px;font-size:.95rem}
+.nstars .off{color:var(--line)}
+.me{position:absolute;margin-left:-23px;pointer-events:none;z-index:2}
+.me .bot{width:46px;height:46px;animation:hop 1.4s ease-in-out infinite}
+
+/* ---------- briefing / level top ---------- */
+.brief{display:grid;justify-items:center;text-align:center;gap:10px;padding-block:10px}
+.brief .boss{width:170px;height:170px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+.chip{padding:6px 12px;border-radius:99px;border:1px solid var(--line);font-size:.88rem;font-weight:700;background:var(--card)}
+.lvtop{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+.phases{flex:1;display:flex;gap:5px}
+.phases i{flex:1;height:10px;border-radius:99px;background:var(--line);transition:background .3s}
+.phases i.done{background:var(--good)}
+.phases i.cur{background:var(--accent)}
+
+/* ---------- mission ---------- */
+.obj{display:flex;gap:12px;align-items:center;padding:12px 14px;border-radius:16px;background:var(--soft);border:2px solid transparent;margin-bottom:14px;transition:all .3s}
+.obj b{display:block;font-family:var(--display);font-size:clamp(1.05rem,2.4vw,1.3rem);line-height:1.25}
+.obj>div{flex:1;min-width:0}
+.obj.done{border-color:var(--good);background:color-mix(in srgb,var(--good) 14%,var(--card))}
+.check{width:30px;height:30px;flex:none;border-radius:50%;border:3px solid var(--line);display:grid;place-items:center;font-weight:800;transition:all .3s}
+.obj.done .check{background:var(--good);border-color:var(--good);color:var(--card);animation:hop .5s}
+.intel{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:14px;background:color-mix(in srgb,var(--hi) 22%,var(--card));border:1px solid color-mix(in srgb,var(--hi) 55%,var(--line));margin-top:14px;animation:pop .45s both}
+.intel .gem{width:28px;height:28px;flex:none;border-radius:8px;background:var(--hi);display:grid;place-items:center;font-weight:800;color:var(--ink);transform:rotate(45deg)}
+.intel .gem span{transform:rotate(-45deg)}
+
+/* ---------- rapid fire ---------- */
+.rf{display:grid;gap:14px}
+.rf-top{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.combo{font-family:var(--display);font-weight:800;color:var(--hi);font-size:1.3rem;min-width:5ch;text-align:right;text-shadow:0 1px 0 var(--ink)}
+.combo.bump{animation:bump .35s}
+@keyframes bump{50%{transform:scale(1.5)}}
+.timer{height:10px;background:var(--line);border-radius:99px;overflow:hidden}
+.timer i{display:block;height:100%;background:var(--accent);width:100%}
+.timer i.low{background:var(--bad)}
+.rf-card{min-height:190px;border-radius:22px;background:var(--card);border:3px solid var(--line);display:grid;place-items:center;text-align:center;padding:24px;font-family:var(--display);font-size:clamp(1.25rem,3.4vw,1.85rem);font-weight:700;line-height:1.25;text-wrap:balance;animation:cardin .35s cubic-bezier(.2,1.3,.4,1)}
+@keyframes cardin{from{transform:translateX(40px) rotate(4deg);opacity:0}}
+.rf-card.ok{border-color:var(--good);background:color-mix(in srgb,var(--good) 10%,var(--card))}
+.rf-card.no{border-color:var(--bad);background:color-mix(in srgb,var(--bad) 8%,var(--card));animation:shake .35s}
+.fb{min-height:3em;margin:0;text-align:center;font-weight:700}
+.fb.ok{color:var(--good)}.fb.no{color:var(--bad)}
+.fb span{display:block;font-weight:400;color:var(--ink)}
+.rf-btns{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.big-btn{padding:18px 10px;border-radius:18px;font-family:var(--display);font-weight:800;font-size:1.35rem;border:0;color:var(--card);transition:transform .1s}
+.big-btn small{display:block;font-family:var(--mono);font-size:.7rem;font-weight:400;opacity:.8}
+.big-btn:active{transform:translateY(4px)}
+.big-btn:disabled{opacity:.5}
+.tbtn{background:var(--good);box-shadow:0 6px 0 color-mix(in srgb,var(--good) 55%,var(--ink))}
+.fbtn{background:var(--bad);box-shadow:0 6px 0 color-mix(in srgb,var(--bad) 55%,var(--ink))}
+.results{text-align:center;display:grid;gap:12px;justify-items:center}
+
+/* ---------- boss ---------- */
+.arena{position:relative;border-radius:22px;background:radial-gradient(circle at 50% 38%,var(--soft),var(--card) 70%);border:1px solid var(--line);padding:16px;display:grid;justify-items:center;gap:8px;overflow:hidden;margin-bottom:14px}
+.arena.ouch{animation:shake .4s;box-shadow:inset 0 0 0 4px var(--bad)}
+.bname{text-align:center}
+.bname b{font-family:var(--display);font-size:1.4rem;display:block}
+.boss{width:140px;height:140px;animation:wob 2.4s ease-in-out infinite;overflow:visible}
+@keyframes wob{50%{transform:translateY(-6px) scale(1.03,.97)}}
+.boss.hit{animation:hit .45s}
+@keyframes hit{20%{transform:translateX(-12px) rotate(-8deg);filter:brightness(1.8)}60%{transform:translateX(9px) rotate(5deg)}}
+.boss.dead{animation:die .9s forwards}
+@keyframes die{30%{transform:scale(1.2) rotate(-10deg)}to{transform:scale(0) rotate(40deg);opacity:0}}
+.hp{width:min(320px,100%);height:14px;border-radius:99px;background:var(--line);overflow:hidden;border:2px solid var(--ink)}
+.hp i{display:block;height:100%;background:var(--bad);transition:width .45s cubic-bezier(.2,.8,.2,1)}
+.hearts{display:flex;gap:6px}
+.heart{width:28px;height:28px;fill:var(--bad);transition:opacity .3s}
+.heart.lost{fill:var(--line);animation:shake .4s}
+.dmg{position:absolute;left:50%;top:30%;font-family:var(--display);font-weight:800;font-size:2.2rem;color:var(--bad);animation:floatup 1s forwards;pointer-events:none;text-shadow:0 2px 0 var(--card)}
+.shot{position:absolute;left:calc(50% - 10px);bottom:12px;width:20px;height:20px;border-radius:6px;background:var(--hi);border:2px solid var(--ink);pointer-events:none}
+.q{font-family:var(--display);font-size:1.3rem;font-weight:700;margin:0 0 14px;text-wrap:balance}
+.opts{display:grid;gap:8px}
+.opt{display:flex;gap:12px;align-items:center;text-align:left;border:2px solid var(--line);background:var(--card);border-radius:14px;padding:12px 14px;transition:border-color .2s,background .2s,transform .15s}
+.opt:hover:not(:disabled){border-color:var(--accent);transform:translateX(3px)}
+.opt .L{width:28px;height:28px;flex:none;border-radius:8px;background:var(--paper);display:grid;place-items:center;font-family:var(--mono);font-weight:600;font-size:.85rem}
+.opt.right{border-color:var(--good);background:color-mix(in srgb,var(--good) 13%,var(--card))}
+.opt.right .L{background:var(--good);color:var(--card)}
+.opt.wrong{border-color:var(--bad);background:color-mix(in srgb,var(--bad) 9%,var(--card));animation:shake .35s}
+.opt:disabled{cursor:default}
+.why{margin:12px 0 0;padding:10px 14px;border-radius:10px;background:var(--card);border:1px solid var(--line)}
+
+/* ---------- victory / deck / cert ---------- */
+.victory{display:grid;justify-items:center;text-align:center;gap:12px}
+.victory h2{font-size:clamp(1.6rem,4.5vw,2.4rem);font-weight:800}
+.stars{display:flex;gap:10px}
+.star{width:62px;height:62px;fill:var(--line)}
+.star.on{fill:var(--hi);stroke:var(--ink);stroke-width:1;animation:starin .5s cubic-bezier(.2,1.6,.4,1) both;animation-delay:var(--d)}
+@keyframes starin{from{transform:scale(0) rotate(-90deg)}}
+.fcs{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;width:100%}
+.fc{perspective:900px;border:0;background:none;padding:0;min-height:120px;animation:pop .45s both;animation-delay:var(--d,0s)}
+.fc-in{position:relative;display:block;height:100%;min-height:120px;transition:transform .55s cubic-bezier(.2,.8,.2,1);transform-style:preserve-3d}
+.fc.flip .fc-in{transform:rotateY(180deg)}
+.fc-f,.fc-b{position:absolute;inset:0;backface-visibility:hidden;border-radius:14px;padding:14px;display:grid;place-items:center;text-align:center}
+.fc-f{background:var(--accent);color:var(--accent-ink);font-family:var(--display);font-weight:800;font-size:1.2rem}
+.fc-b{background:var(--card);border:1px solid var(--line);transform:rotateY(180deg);font-size:.95rem}
+.fc.locked .fc-f{background:var(--line);color:var(--muted)}
+.cert{border:3px double var(--ink);border-radius:16px;padding:28px;text-align:center;display:grid;gap:8px;background:linear-gradient(135deg,var(--soft),var(--card));max-width:560px;width:100%}
+.cert h3{font-size:clamp(1.6rem,5vw,2.4rem);font-weight:800}
+input[type=text],input[type=number],textarea{font:inherit;color:var(--ink);background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:10px 12px;width:100%}
+textarea{min-height:84px;resize:vertical}
+
+/* ---------- mission widgets ---------- */
+.tok{font-family:var(--mono);padding:3px 7px;border-radius:7px;background:var(--t0);display:inline-flex;flex-direction:column;align-items:center;line-height:1.25;animation:pop .35s both;animation-delay:var(--d,0s);white-space:pre}
+.tok small{font-size:.62rem;color:var(--muted)}
+.c1{background:var(--t1)}.c2{background:var(--t2)}.c3{background:var(--t3)}.c4{background:var(--t4)}.c5{background:var(--t5)}
+.tok .sp{color:var(--muted);font-style:normal}
+.tok-out{display:flex;flex-wrap:wrap;gap:4px;margin-top:12px;max-height:220px;overflow:auto;padding:2px}
+.tok-out .tok{font-size:.95rem}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:14px}
+.stat{border:1px solid var(--line);border-radius:10px;padding:10px 12px;transition:border-color .3s,background .3s}
+.stat.hit{border-color:var(--good);background:color-mix(in srgb,var(--good) 12%,var(--card))}
+.stat b{display:block;font-family:var(--display);font-size:1.5rem}
+.stat span{font-size:.8rem;color:var(--muted)}
+.sentence{font-family:var(--display);font-size:clamp(1.4rem,3vw,2rem);font-weight:700;min-height:2.4em;margin-bottom:10px}
+.sentence .w.new{color:var(--accent);display:inline-block;animation:pop .4s both}
+.caret{display:inline-block;width:.5em;height:1em;background:var(--hi);vertical-align:-.12em;animation:blink2 1s steps(1) infinite;border-radius:2px}
+@keyframes blink2{50%{opacity:0}}
+.bars{display:grid;gap:6px}
+.bar{display:grid;grid-template-columns:110px 1fr 48px;align-items:center;gap:10px;border:1px solid var(--line);border-radius:10px;background:var(--card);padding:7px 10px;text-align:left}
+.bar:hover{border-color:var(--accent)}
+.bar-w{font-family:var(--mono);font-weight:600}
+.bar-track{height:12px;border-radius:99px;background:var(--paper);overflow:hidden}
+.bar-fill{display:block;height:100%;background:var(--accent);border-radius:99px;transition:width .45s cubic-bezier(.2,.8,.2,1)}
+.bar-p{text-align:right;color:var(--muted)}
+.bar.picked{border-color:var(--hi);background:color-mix(in srgb,var(--hi) 18%,var(--card))}
+input[type=range]{accent-color:var(--accent);width:min(260px,100%)}
+.sorter{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px}
+.sort-item{border:1px solid var(--line);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:10px;transition:border-color .3s,background .3s;background:var(--card)}
+.sort-q{font-weight:700}
+.sort-btns{display:flex;gap:8px}
+.sort-btns .btn{flex:1;padding:7px}
+.sort-item[data-ans="ok"]{border-color:var(--good);background:color-mix(in srgb,var(--good) 10%,var(--card))}
+.sort-item[data-ans="no"]{border-color:var(--bad);background:color-mix(in srgb,var(--bad) 9%,var(--card));animation:shake .35s}
+.sort-item[data-ans] .btn{pointer-events:none}
+.sort-item .btn.picked{background:var(--ink);color:var(--card);border-color:var(--ink)}
+.sort-why{font-size:.88rem;margin:0}
+.score{margin:12px 0 0;color:var(--muted)}
+.cv-wrap{position:relative;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--paper)}
+.cv{display:block;width:100%;height:260px;cursor:crosshair}
+.ax{position:absolute;font-family:var(--mono);font-size:.7rem;color:var(--muted);pointer-events:none}
+.ax-x{right:8px;bottom:6px}.ax-y{left:8px;top:6px}
+.readout{display:flex;flex-wrap:wrap;gap:8px 18px;margin-top:10px;font-size:.88rem}
+.readout b{color:var(--accent)}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:-1px}
+.dot.cat{background:var(--cat)}.dot.dog{background:var(--dog)}
+.svgbox{width:100%;max-width:560px;display:block;margin-inline:auto;height:auto}
+.ring{cursor:pointer;transition:opacity .3s,stroke-width .2s;stroke:var(--card);stroke-width:2}
+.ring:hover{stroke:var(--ink)}
+.ring.seen{stroke:var(--ink);stroke-width:2.5}
+.ringlbl{font-family:var(--display);font-weight:700;font-size:15px;fill:var(--ink);pointer-events:none;text-anchor:middle}
+.info{min-height:3.4em;margin-top:10px}
+.info b{font-family:var(--display)}
+.pipe{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;position:relative}
+.pipe::before{content:"";position:absolute;left:8%;right:8%;top:28px;height:3px;background:repeating-linear-gradient(90deg,var(--accent) 0 10px,transparent 10px 18px);background-size:18px 3px;animation:dash 1s linear infinite;opacity:.5}
+@keyframes dash{to{background-position:18px 0}}
+.pnode{position:relative;display:flex;flex-direction:column;align-items:center;gap:8px;border:0;background:none;text-align:center;padding:0}
+.pnode .disc{width:56px;height:56px;border-radius:50%;background:var(--card);border:3px solid var(--line);display:grid;place-items:center;font-family:var(--mono);font-weight:600;transition:all .3s}
+.pnode.seen .disc{border-color:var(--accent);background:var(--accent);color:var(--accent-ink)}
+.pnode b{font-size:.9rem}
+.pinfo{margin-top:16px}
+.two{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:18px;align-items:start}
+.sl{display:grid;grid-template-columns:1fr auto;gap:2px 10px;align-items:center;margin-bottom:10px}
+.sl label{font-weight:700;font-size:.92rem}
+.sl output{font-family:var(--mono);font-size:.9rem;color:var(--accent)}
+.sl input{grid-column:1/-1;width:100%}
+.gauge{font-family:var(--display);font-size:2.4rem;font-weight:800;line-height:1}
+.flags{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.flag{font-family:var(--mono);font-size:.8rem;padding:4px 10px;border-radius:99px;border:1px solid var(--line)}
+.flag.on{background:var(--good);border-color:var(--good);color:var(--card)}
+.big{font-family:var(--display);font-weight:800;font-size:clamp(1.6rem,4.5vw,2.6rem);line-height:1.1;word-break:break-all}
+.devs{display:grid;gap:8px;margin-top:14px}
+.dev{display:grid;grid-template-columns:120px 1fr 90px;gap:10px;align-items:center;font-size:.9rem}
+.dev-track{height:14px;border-radius:99px;background:var(--paper);border:1px solid var(--line);overflow:hidden}
+.dev-track i{display:block;height:100%;border-radius:99px;transition:width .5s cubic-bezier(.2,.8,.2,1),background .3s}
+.dev .ok{color:var(--good);font-weight:700}.dev .no{color:var(--bad);font-weight:700}
+.dev.target{outline:2px dashed var(--hi);outline-offset:4px;border-radius:6px}
+.ctx{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px}
+.meter{display:flex;align-items:center;gap:10px;margin-bottom:8px;font-size:.85rem}
+.meter-bar{flex:1;height:8px;background:var(--paper);border-radius:99px;overflow:hidden}
+.meter-bar i{display:block;height:100%;background:var(--hi);transition:width .4s}
+.ctx-win{height:302px;border:2px solid var(--ink);border-radius:12px;display:flex;flex-direction:column;overflow:hidden;background:var(--paper)}
+.blk{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:0 10px;font-size:.78rem;border-bottom:1px solid var(--card);overflow:hidden;flex:none;min-height:0}
+.blk span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.blk.sys{background:var(--t4)}.blk.user{background:var(--t2)}.blk.ai{background:var(--t1)}.blk.doc{background:var(--t3)}
+.blk.fresh{animation:drop .4s cubic-bezier(.2,.8,.2,1)}
+@keyframes drop{from{transform:translateY(30px);opacity:0}}
+.stack{display:grid;gap:8px;margin-bottom:14px}
+.stack .btn{display:flex;justify-content:space-between;text-align:left}
+.gone{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;min-height:28px}
+.gchip{font-size:.78rem;padding:3px 8px;border-radius:6px;background:var(--paper);text-decoration:line-through;color:var(--muted);animation:pop .4s both}
+.reply{margin-top:10px;display:grid;gap:6px}
+.books{display:flex;gap:4px;align-items:flex-end;min-height:80px;margin-top:12px;flex-wrap:wrap}
+.books i{width:14px;border-radius:3px 3px 1px 1px;background:var(--accent);animation:pop .3s both;animation-delay:var(--d)}
+.books i:nth-child(3n){background:var(--hi)}.books i:nth-child(4n){background:var(--good)}
+.chatbox{display:flex;flex-direction:column;gap:8px;min-height:230px}
+pre.code{margin:0;font-family:var(--mono);font-size:.8rem;line-height:1.55;white-space:pre;overflow-x:auto;background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:14px}
+.typing{display:inline-flex;gap:4px;padding:12px 14px;background:var(--soft);border-radius:14px;width:fit-content}
+.typing i{width:6px;height:6px;border-radius:50%;background:var(--muted);animation:td 1s infinite}
+.typing i:nth-child(2){animation-delay:.15s}.typing i:nth-child(3){animation-delay:.3s}
+@keyframes td{50%{transform:translateY(-4px);opacity:.4}}
+.svgtxt{font-family:var(--body);font-size:13px;fill:var(--ink)}
+.svgmut{font-family:var(--mono);font-size:11px;fill:var(--muted)}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-top:12px}
+.fact{border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-size:.88rem}
+.fact span{display:block;font-family:var(--mono);font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.status{min-height:1.5em;font-weight:700;margin-top:6px}
+.status.bad{color:var(--bad)}.status.good{color:var(--good)}
+.cost-bars{display:grid;gap:10px;margin-top:6px}
+.cb{display:grid;grid-template-columns:110px 1fr 90px;gap:10px;align-items:center}
+.cb-track{height:26px;border-radius:8px;background:var(--paper);overflow:hidden}
+.cb-track i{display:block;height:100%;border-radius:8px;transition:width .5s cubic-bezier(.2,.8,.2,1)}
+.cb b{font-family:var(--mono);text-align:right}
+.prices{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.prices label{font-size:.78rem;color:var(--muted);display:grid;gap:4px}
+.hot{background:color-mix(in srgb,var(--hi) 30%,transparent);border-radius:4px;cursor:pointer;outline:1px dashed color-mix(in srgb,var(--hi) 80%,var(--ink));transition:background .2s}
+.hot.seen{background:color-mix(in srgb,var(--good) 22%,transparent);outline-color:var(--good)}
+.hot:hover{background:color-mix(in srgb,var(--hi) 55%,transparent)}
+.ings{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+.ing{border:1.5px solid var(--line);background:var(--card);border-radius:99px;padding:6px 14px;font-weight:700;font-size:.9rem;transition:all .2s}
+.ing.on{background:var(--ink);color:var(--card);border-color:var(--ink)}
+.ing:disabled{opacity:1}
+.pmeter{display:flex;gap:4px;margin:6px 0 4px}
+.pmeter i{flex:1;height:8px;border-radius:99px;background:var(--line);transition:background .3s}
+.pmeter i.on{background:var(--good)}
+.prompt-txt .p-line{display:block;animation:pop .3s both}
+table.mini{border-collapse:collapse;font-size:.88rem;width:100%}
+table.mini td,table.mini th{border-bottom:1px solid var(--line);padding:5px 8px;text-align:left}
+.badge{display:inline-block;font-family:var(--mono);font-size:.72rem;padding:2px 8px;border-radius:99px;background:var(--soft);margin-bottom:8px}
+.wd{cursor:pointer}
+.wd text{font-family:var(--body);font-size:3.4px;fill:var(--ink);font-weight:700}
+.wd circle{fill:var(--accent)}
+.wd.sel circle{fill:var(--hi)}
+.wd:hover text{fill:var(--accent)}
+.grp{font-family:var(--mono);font-size:2.4px;fill:var(--muted);letter-spacing:.2px}
+.nline{stroke:var(--hi);stroke-width:.6;stroke-dasharray:60;stroke-dashoffset:60;animation:drawl .6s forwards}
+@keyframes drawl{to{stroke-dashoffset:0}}
+.stepper{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+.stepper span{padding:5px 10px;border-radius:99px;border:1px solid var(--line);font-size:.82rem;font-weight:700;color:var(--muted);transition:all .3s}
+.stepper span.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.stepper span.past{color:var(--ink)}
+.docs{display:grid;gap:8px}
+.doc{border:1px solid var(--line);border-radius:10px;padding:8px 12px;display:flex;justify-content:space-between;gap:10px;font-size:.9rem;transition:all .4s}
+.doc.best{border-color:var(--good);background:color-mix(in srgb,var(--good) 12%,var(--card));transform:scale(1.02)}
+.loopwrap{display:grid;grid-template-columns:minmax(0,220px) minmax(0,1fr);gap:18px;align-items:start}
+.lnode circle{fill:var(--card);stroke:var(--line);stroke-width:3;transition:all .3s}
+.lnode.on circle{fill:var(--accent);stroke:var(--accent)}
+.lnode text{font-family:var(--display);font-weight:700;font-size:13px;fill:var(--ink);text-anchor:middle}
+.lnode.on text{fill:var(--accent-ink)}
+.log{display:grid;gap:6px;font-size:.9rem}
+.log div{padding:7px 10px;border-radius:8px;background:var(--paper);animation:pop .35s both;border-left:3px solid var(--line)}
+.log .think{border-color:var(--hi)}.log .act{border-color:var(--accent);font-family:var(--mono);font-size:.82rem}.log .observe{border-color:var(--good);font-family:var(--mono);font-size:.82rem}.log .answer{border-color:var(--good);font-weight:700}
+
+/* ---------- guided lessons ---------- */
+.buildrow{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.bp{min-width:120px;min-height:66px;border:2px dashed var(--line);border-radius:14px;background:var(--card);padding:10px 14px;display:grid;place-items:center;align-content:center;text-align:center}
+.bp b{font-family:var(--display);font-size:1.05rem}
+.bp small{display:block;color:var(--muted);font-size:.8rem}
+.bp.next{border-color:var(--accent);animation:pulse 1.4s ease-in-out infinite}
+.bp.on{border-style:solid;border-color:var(--accent);background:var(--soft);animation:pop .4s both;cursor:default}
+.bp:disabled{opacity:.55}
+.arw{color:var(--muted);font-family:var(--mono);font-weight:700}
+.shk{animation:shake .35s}
+.splitrow{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+.sw{font-family:var(--display);font-weight:800;font-size:1.5rem;border:2px solid var(--accent);background:var(--card);border-radius:14px;padding:10px 16px;animation:pulse 1.6s ease-in-out infinite}
+.swout{display:flex;gap:4px;align-items:center;font-size:1.3rem;flex-wrap:wrap}
+.swout small{font-size:.75rem;color:var(--muted);margin-left:4px}
+.knob{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.kbox{border:2px solid var(--line);border-radius:14px;padding:8px 16px;text-align:center;min-width:80px;transition:all .3s}
+.kbox b{display:block;font-family:var(--display);font-size:1.8rem}
+.kbox.w{border-color:var(--accent)}.kbox.target{border-color:var(--hi)}
+.kbox.hit{border-color:var(--good);background:color-mix(in srgb,var(--good) 14%,var(--card))}
+.wgrid{display:grid;grid-template-columns:repeat(24,1fr);gap:3px;max-width:480px;margin-top:10px}
+.wgrid i{aspect-ratio:1;border-radius:2px;background:var(--accent);animation:shade 2.4s ease-in-out infinite;animation-delay:var(--d)}
+@keyframes shade{0%,100%{opacity:.15}50%{opacity:.9}}
+
+/* ---------- simulated tools ---------- */
+.tasks{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.task{font-size:.82rem;font-weight:700;padding:5px 10px 5px 8px;border-radius:99px;border:1.5px dashed var(--line);color:var(--muted)}
+.task::before{content:"○ "}
+.task.on{border-style:solid;border-color:var(--good);background:color-mix(in srgb,var(--good) 14%,var(--card));color:var(--ink);animation:pop .35s both}
+.task.on::before{content:"✓ ";color:var(--good)}
+.simgrid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:14px;align-items:start}
+.simgrid.one{grid-template-columns:minmax(0,1fr)}
+.sim-win{border:2px solid var(--ink);border-radius:14px;overflow:hidden;background:var(--card);min-width:0}
+.sim-bar{display:flex;align-items:center;gap:6px;padding:7px 10px;background:var(--paper);border-bottom:1px solid var(--line);font-size:.8rem;font-weight:700}
+.sim-bar i{width:9px;height:9px;border-radius:50%;background:var(--bad);flex:none}
+.sim-bar i:nth-child(2){background:var(--hi)}.sim-bar i:nth-child(3){background:var(--good)}
+.sim-bar span{margin-right:auto;margin-left:6px}
+.sim-body{padding:12px;display:flex;flex-direction:column;gap:8px;max-height:340px;overflow:auto}
+.chatlog{min-height:220px}
+.sim-set{display:flex;flex-wrap:wrap;gap:8px 16px;padding:8px 12px;border-bottom:1px solid var(--line);font-size:.85rem;font-weight:700;background:var(--soft)}
+.sim-set select{font:inherit;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:6px;padding:2px 6px}
+.sim-chips{display:flex;flex-wrap:wrap;gap:6px;padding:10px;border-top:1px solid var(--line)}
+.schip{border:1.5px solid var(--accent);background:var(--card);color:var(--accent);border-radius:99px;padding:6px 12px;font-weight:700;font-size:.85rem;text-align:left}
+.schip:hover:not(:disabled){background:var(--soft)}
+.bub{white-space:pre-line}
+.bub.err{background:color-mix(in srgb,var(--bad) 14%,var(--card));color:var(--bad);font-weight:700}
+.toolc{display:grid;gap:2px;border:1.5px dashed var(--accent);border-radius:10px;padding:8px 10px;font-size:.82rem;background:var(--paper);animation:pop .3s both;width:fit-content;max-width:100%}
+.toolc .tag{margin:0}
+.term{font-family:var(--mono);font-size:.82rem;font-weight:600}
+.term.out{color:var(--muted);font-weight:400;white-space:pre-wrap}
+.sline{font-size:.86rem;padding:6px 10px;border-radius:8px;background:var(--paper);animation:pop .3s both}
+.sline.err{background:color-mix(in srgb,var(--bad) 14%,var(--card));color:var(--bad);font-weight:700}
+.sline.okl{background:color-mix(in srgb,var(--good) 14%,var(--card));color:var(--good);font-weight:700}
+.outcome{display:grid;gap:6px;padding-top:8px;border-top:1px dashed var(--line);animation:pop .35s both}
+.insp{min-width:0;display:grid;gap:8px;align-content:start}
+.folders{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.mail{padding:7px 10px;border-radius:8px;background:var(--card);border:1px solid var(--line);font-size:.85rem;margin-top:6px;animation:drop .35s both}
+.mail.bad{border-color:var(--bad);color:var(--bad);font-weight:700}
+.hubrow{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;padding:4px 0;border-bottom:1px solid var(--line)}
+.ram{height:22px;border-radius:8px;background:var(--paper);border:2px solid var(--ink);overflow:hidden}
+.ram i{display:block;height:100%;width:0;background:var(--good);transition:width .6s cubic-bezier(.2,.8,.2,1)}
+.ram i.full{background:var(--bad)}
+.keyrow{padding:8px 10px;border-radius:8px;background:var(--paper);border:1px dashed var(--hi);word-break:break-all;font-size:.85rem}
+.done-b,.done-b:disabled{background:var(--good);color:var(--card);border-color:var(--good);opacity:1}
+
+@media (max-width:620px){
+  .simgrid,.folders{grid-template-columns:minmax(0,1fr)}
+  .two,.ctx,.loopwrap{grid-template-columns:minmax(0,1fr)}
+  .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .pipe{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .pipe::before{display:none}
+  .dev,.cb{grid-template-columns:90px 1fr 70px}
+  .bar{grid-template-columns:80px 1fr 40px}
+  .prices{grid-template-columns:minmax(0,1fr)}
+  .nlabel{width:120px}
+  .card{padding:14px}
+  .hud .xpbar{display:none}
+}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+</style>
+
+<header class="hud"><div class="wrap">
+  <button class="brand" id="home"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>AI Quest</button>
+  <span class="pill" title="Player level">Lv <b id="lvl">1</b><span class="xpbar"><i id="xpfill"></i></span><span id="xp">0 XP</span></span>
+  <span class="pill" title="Stars earned"><span class="starg">★</span><b id="stars">0</b></span>
+  <button class="pill" id="deckBtn">Cards</button>
+  <button class="pill" id="snd" aria-pressed="true">Sound on</button>
+</div></header>
+<main class="wrap" id="screen"></main>
+
+<script>
+const $=(s,r=document)=>r.querySelector(s);
+const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const RM=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const esc=s=>s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const seed=a=>()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296};
+const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a};
+const BOT=`<svg class="bot" viewBox="0 0 48 48" aria-hidden="true"><line class="ant" x1="24" y1="11" x2="24" y2="5"/><circle class="tip" cx="24" cy="4.5" r="3.2"/><rect class="head" x="5" y="11" width="38" height="31" rx="11"/><g class="eyes"><circle cx="17" cy="25" r="3.3"/><circle cx="31" cy="25" r="3.3"/></g><path class="m1" d="M19 34 Q24 36.5 29 34"/><path class="m2" d="M17 32.5 Q24 39 31 32.5"/><path class="m3" d="M19 36 Q24 32.5 29 36"/></svg>`;
+const HEART='<svg class="heart" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7.5-4.6-9.6-9.2C.8 8.3 3 4.5 6.7 4.5c2.1 0 3.6 1.2 5.3 3.1 1.7-1.9 3.2-3.1 5.3-3.1 3.7 0 5.9 3.8 4.3 7.3C19.5 16.4 12 21 12 21z"/></svg>';
+const STAR='<path d="M12 2l3 6.9 7.5.7-5.7 5 1.7 7.4L12 18.3 5.5 22l1.7-7.4L1.5 9.6 9 8.9z"/>';
+function bossSVG(c,shape){
+  const body=[`<circle cx="60" cy="64" r="44"/>`,`<rect x="18" y="22" width="84" height="84" rx="18"/>`,`<path d="M60 10 L108 102 H12Z" stroke-linejoin="round"/>`,`<path d="M20 70 Q20 20 60 20 Q100 20 100 70 L100 106 L88 96 L76 106 L64 96 L52 106 L40 96 L28 106 L20 96Z"/>`][shape%4];
+  return `<svg class="boss" viewBox="0 0 120 120" aria-hidden="true"><g fill="var(${c})" stroke="var(--ink)" stroke-width="3">${body}</g><circle cx="46" cy="62" r="9" fill="var(--card)" stroke="var(--ink)" stroke-width="2.5"/><circle cx="74" cy="62" r="9" fill="var(--card)" stroke="var(--ink)" stroke-width="2.5"/><circle cx="48" cy="64" r="4" fill="var(--ink)"/><circle cx="76" cy="64" r="4" fill="var(--ink)"/><path d="M35 47 L54 54 M85 47 L66 54" stroke="var(--ink)" stroke-width="4" stroke-linecap="round"/><path d="M46 86 Q60 77 74 86" fill="none" stroke="var(--ink)" stroke-width="3.5" stroke-linecap="round"/></svg>`;
+}
+
+/* ================= sound ================= */
+let AC;
+function sfx(k){if(!S.sound)return;try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();const n={ok:[660,880],bad:[200,130],hit:[330,520,700],win:[523,659,784,1046],tap:[700],lvl:[392,523,659,784,1046]}[k],t=AC.currentTime;
+  n.forEach((f,i)=>{const o=AC.createOscillator(),g=AC.createGain(),s=t+i*.085;o.type=k==='bad'?'sawtooth':'triangle';o.frequency.value=f;g.gain.setValueAtTime(.0001,s);g.gain.exponentialRampToValueAtTime(.14,s+.01);g.gain.exponentialRampToValueAtTime(.0001,s+.16);o.connect(g).connect(AC.destination);o.start(s);o.stop(s+.18)})}catch(e){}}
+
+/* ================= helpers used by several widgets ================= */
+function tokenize(str){
+  // shortcut: heuristic splitter, real tokenizers (BPE) learn merges from data; fine for teaching
+  const out=[];
+  for(const m of str.matchAll(/(\s?)([A-Za-z]+|\d{1,3}|[^\sA-Za-z\d])|\s+/gu)){
+    if(m[2]===undefined){out.push(m[0]);continue}
+    const sp=m[1],w=m[2];
+    if(/^[A-Za-z]+$/.test(w)&&w.length>6){for(let i=0;i<w.length;i+=4)out.push((i?'':sp)+w.slice(i,i+4))}
+    else out.push(sp+w);
+  }
+  return out;
+}
+const hash=s=>{let h=7;for(const c of s)h=(h*31+c.codePointAt(0))%100003;return h};
+function apiCost(msgsPerDay,inTok,outTok,pricePerMIn,pricePerMOut){return 30*msgsPerDay*(inTok*pricePerMIn+outTok*pricePerMOut)/1e6}
+let moodT;
+function mood(m){const b=$('#screen .bot');if(!b)return;b.dataset.mood='';void b.offsetWidth;b.dataset.mood=m;clearTimeout(moodT);moodT=setTimeout(()=>b.dataset.mood='',1600)}
+
+const sorter=(items,labels)=>(el,done)=>{
+  el.innerHTML=`<div class="sorter">${items.map((it,i)=>`<div class="sort-item" data-i="${i}"><span class="sort-q">${it[0]}</span><div class="sort-btns">${labels.map((l,j)=>`<button class="btn" data-j="${j}">${l}</button>`).join('')}</div><p class="sort-why" hidden></p></div>`).join('')}</div><p class="score mono">0 / ${items.length} sorted</p>`;
+  let n=0,right=0;
+  el.onclick=e=>{
+    const b=e.target.closest('[data-j]');if(!b)return;
+    const row=b.closest('.sort-item');if(row.dataset.ans)return;
+    const it=items[row.dataset.i],ok=+b.dataset.j===it[1];
+    row.dataset.ans=ok?'ok':'no';b.classList.add('picked');
+    const w=row.querySelector('.sort-why');w.hidden=false;w.innerHTML=`<b>${ok?'Correct':'Nope'}: ${labels[it[1]]}.</b> ${it[2]}`;
+    n++;right+=ok;mood(ok?'happy':'oops');sfx(ok?'ok':'bad');
+    el.querySelector('.score').textContent=`${n} / ${items.length} sorted · ${right} right`;
+    if(n===items.length)done();
+  };
+};
+
+/* ================= mission widgets: each calls done() when its objective is met ================= */
+function learn(el,done){
+  el.innerHTML=`<div class="tools"><div class="seg"><button class="seg-b on" data-c="0"><i class="dot cat"></i>Add cat</button><button class="seg-b" data-c="1"><i class="dot dog"></i>Add dog</button></div><button class="btn primary" data-a="train">Train</button><button class="btn ghost" data-a="reset">Reset</button></div>
+  <div class="cv-wrap"><canvas class="cv" aria-label="Scatter plot of cats and dogs by size and ear pointiness"></canvas><span class="ax ax-x">size →</span><span class="ax ax-y">↑ ear pointiness</span></div>
+  <div class="readout mono"><span>your cats <b data-o="a0">0/2</b></span><span>your dogs <b data-o="a1">0/2</b></span><span>w₁ <b data-o="w0">0.00</b></span><span>w₂ <b data-o="w1">0.00</b></span><span>bias <b data-o="w2">0.00</b></span><span>accuracy <b data-o="acc">–</b></span></div>`;
+  const cv=el.querySelector('canvas'),x=cv.getContext('2d'),ink=css('--ink'),card=css('--card'),cat=css('--cat'),dog=css('--dog');
+  let W=0,H=260,cls=0,running=false,trained=false,w=[0,0,0],pts=[],added=[0,0];
+  const f=v=>(v-.5)*4,sig=z=>1/(1+Math.exp(-z)),pr=(a,b)=>sig(w[0]*f(a)+w[1]*f(b)+w[2]);
+  const acc=()=>pts.filter(([a,b,y])=>(pr(a,b)>.5)==y).length/pts.length;
+  const reset=()=>{const r=seed(7);pts=[];w=[0,0,0];trained=false;added=[0,0];for(let i=0;i<7;i++){pts.push([.26+(r()-.5)*.28,.72+(r()-.5)*.28,0]);pts.push([.72+(r()-.5)*.28,.3+(r()-.5)*.28,1])}};
+  const size=()=>{const d=devicePixelRatio||1;W=cv.clientWidth;cv.width=W*d;cv.height=H*d;x.setTransform(d,0,0,d,0,0)};
+  function step(){const g=[0,0,0];for(const[a,b,y]of pts){const e=pr(a,b)-y;g[0]+=e*f(a);g[1]+=e*f(b);g[2]+=e}for(let k=0;k<3;k++)w[k]-=.6*g[k]/(pts.length||1)}
+  function draw(){
+    x.clearRect(0,0,W,H);const c=14;
+    if(trained||running)for(let gx=0;gx<W;gx+=c)for(let gy=0;gy<H;gy+=c){const p=pr((gx+c/2)/W,1-(gy+c/2)/H);x.globalAlpha=Math.abs(p-.5)*.5;x.fillStyle=p>.5?dog:cat;x.fillRect(gx,gy,c,c)}
+    x.globalAlpha=1;
+    if(Math.abs(w[1])>1e-3){x.strokeStyle=ink;x.lineWidth=2;x.setLineDash([6,5]);x.beginPath();[0,1].forEach(a=>{const py=(-(w[0]*f(a)+w[2])/w[1])/4+.5;a?x.lineTo(a*W,(1-py)*H):x.moveTo(0,(1-py)*H)});x.stroke();x.setLineDash([])}
+    for(const[a,b,y]of pts){x.beginPath();x.arc(a*W,(1-b)*H,7,0,7);x.fillStyle=y?dog:cat;x.fill();x.lineWidth=2;x.strokeStyle=card;x.stroke()}
+    w.forEach((v,k)=>el.querySelector(`[data-o="w${k}"]`).textContent=v.toFixed(2));
+    added.forEach((n,k)=>el.querySelector(`[data-o="a${k}"]`).textContent=Math.min(n,2)+'/2');
+    el.querySelector('[data-o="acc"]').textContent=trained||running?Math.round(acc()*100)+'%':'–';
+  }
+  cv.onclick=e=>{const r=cv.getBoundingClientRect();if(!r.width||running)return;pts.push([(e.clientX-r.left)/r.width,1-(e.clientY-r.top)/r.height,cls]);added[cls]++;sfx('tap');draw()};
+  el.onclick=e=>{
+    const s=e.target.closest('[data-c]');if(s){cls=+s.dataset.c;el.querySelectorAll('.seg-b').forEach(b=>b.classList.toggle('on',b===s))}
+    const a=e.target.closest('[data-a]');if(!a||running)return;
+    if(a.dataset.a==='reset'){reset();draw();return}
+    running=true;w=[0,0,0];let t=0;
+    (function loop(){for(let i=0;i<(RM?400:4);i++)step();draw();if(!RM&&++t<100&&cv.isConnected)setTimeout(loop,16);else{running=false;trained=true;draw();
+      if(added[0]<2||added[1]<2)toast('Trained! Now add 2 cats and 2 dogs of your own, then train again.');
+      else if(acc()<1){toast('Not 100% yet. Some points overlap. Reset or add clearer examples.');mood('oops')}
+      else done()}})();
+  };
+  addEventListener('resize',()=>{if(cv.isConnected){size();draw()}});
+  reset();size();draw();
+}
+
+function nested(el,done){
+  const R=[['AI',150,140,'Artificial intelligence','Any machine doing tasks that normally need human thinking.','--t2'],['Machine learning',180,110,'Machine learning','AI that learns from data instead of hand-written rules.','--t1'],['Deep learning',205,85,'Deep learning','Machine learning with huge, many-layered neural networks.','--t3'],['LLMs',232,55,'Large language models','Deep learning trained on text to predict the next token.','--t0']];
+  el.innerHTML=`<svg class="svgbox" viewBox="0 0 400 300" role="img" aria-label="Nested circles: AI contains machine learning, which contains deep learning, which contains LLMs">${R.map(([n,cy,r,,,c],i)=>`<circle class="ring" data-i="${i}" cx="200" cy="${cy}" r="${r}" fill="var(${c})"/>`).join('')}${R.map(([n,cy,r],i)=>`<text class="ringlbl" x="200" y="${i===3?cy+5:cy-r+24}">${n}</text>`).join('')}</svg><div class="info panel"><span class="hint" style="margin:0">Tap a ring.</span></div>`;
+  const seen=new Set();
+  el.onclick=e=>{const c=e.target.closest('.ring');if(!c)return;const i=+c.dataset.i;c.classList.add('seen');if(!seen.has(i))sfx('tap');seen.add(i);el.querySelector('.info').innerHTML=`<b>${R[i][3]}</b> ${R[i][4]}<br><span class="hint">${seen.size} of 4 found</span>`;if(seen.size===4)done()};
+}
+
+function tokenizerW(el,done){
+  const samples={English:'I love learning how AI works!',Hindi:'नमस्ते, आप कैसे हैं?',Emoji:'I love pizza 🍕🔥😂',Code:'function add(a, b) { return a + b; }','Long word':'Antidisestablishmentarianism'};
+  el.innerHTML=`<label class="lbl" for="tok-in">Your text</label><textarea id="tok-in">${samples.English}</textarea><div class="tools">${Object.keys(samples).map(k=>`<button class="btn small" data-s="${k}">${k}</button>`).join('')}<label class="hint" style="margin:0"><input type="checkbox" id="tok-ids"> show token IDs</label></div><div class="tok-out"></div><div class="stats"><div class="stat" data-g="ch"><b data-o="ch">0</b><span>characters (need &lt; 25)</span></div><div class="stat" data-g="tk"><b data-o="tk">0</b><span>tokens (need 15+)</span></div><div class="stat"><b data-o="wd">0</b><span>words</span></div><div class="stat"><b data-o="ra">0</b><span>chars per token</span></div></div>`;
+  const ta=el.querySelector('textarea'),ids=el.querySelector('#tok-ids'),o=k=>el.querySelector(`[data-o="${k}"]`);
+  function run(){const s=ta.value,t=tokenize(s),ch=[...s].length;
+    el.querySelector('.tok-out').innerHTML=t.map((x,i)=>`<span class="tok c${hash(x)%6}" style="--d:${Math.min(i*.02,.6)}s">${esc(x).replace(/ /g,'<i class="sp">·</i>').replace(/\n/g,'↵')}${ids.checked?`<small>${hash(x)%50257}</small>`:''}</span>`).join('');
+    o('ch').textContent=ch;o('wd').textContent=s.trim()?s.trim().split(/\s+/).length:0;o('tk').textContent=t.length;o('ra').textContent=t.length?(ch/t.length).toFixed(1):0;
+    el.querySelector('[data-g="ch"]').classList.toggle('hit',ch>0&&ch<25);el.querySelector('[data-g="tk"]').classList.toggle('hit',t.length>=15);
+    if(ch<25&&t.length>=15)done()}
+  ta.oninput=run;ids.onchange=run;
+  el.onclick=e=>{const b=e.target.closest('[data-s]');if(b){ta.value=samples[b.dataset.s];sfx('tap');run()}};
+  run();
+}
+
+function nextTok(el,done){
+  const steps=[[['mat',42],['sofa',22],['roof',14],['keyboard',12],['moon',3]],[['and',50],['then',30],['while',12],['because',5]],[['purred',40],['slept',30],['yawned',17],['stared',10]],[['happily',35],['all day',30],['at me',20],['loudly',15]]];
+  let i=0,T=1,hot=false,words=['The','cat','sat','on','the'];
+  el.innerHTML=`<div class="sentence"></div><div class="bars"></div><div class="tools"><label for="temp"><b>Temperature</b> <span class="mono" data-o="tv">1.0</span></label><input type="range" id="temp" min="0.1" max="2" step="0.1" value="1"><button class="btn primary" data-a="samp">Let the model pick</button><button class="btn ghost" data-a="again">Start over</button></div>`;
+  const probs=()=>{const c=steps[i],raw=c.map(([,p])=>Math.pow(p,1/T)),s=raw.reduce((a,b)=>a+b,0);return c.map(([w],k)=>[w,raw[k]/s])};
+  const sent=()=>el.querySelector('.sentence').innerHTML=words.map((w,k)=>`<span class="w ${k>=5?'new':''}">${w}</span>`).join(' ')+(i<steps.length?' <span class="caret"></span>':'.');
+  function bars(){const b=el.querySelector('.bars');if(i>=steps.length){b.innerHTML=hot?'<p class="verdict">Every word was one prediction from a probability list. That is all an LLM does.</p>':'<p class="verdict">Sentence done, but the objective needs a model pick at temperature 1.5 or higher. Start over and try it.</p>';return}
+    b.innerHTML=probs().map(([w,p])=>`<button class="bar" data-w="${w}"><span class="bar-w">${w}</span><span class="bar-track"><span class="bar-fill" style="width:0"></span></span><span class="bar-p mono">${(p*100).toFixed(0)}%</span></button>`).join('');
+    requestAnimationFrame(()=>requestAnimationFrame(update))}
+  function update(){if(i>=steps.length)return;const p=probs();el.querySelectorAll('.bar').forEach((b,k)=>{b.querySelector('.bar-fill').style.width=(p[k][1]*100).toFixed(1)+'%';b.querySelector('.bar-p').textContent=(p[k][1]*100).toFixed(0)+'%'})}
+  function pick(w){const b=el.querySelector(`.bar[data-w="${w}"]`);if(b)b.classList.add('picked');sfx('tap');el.style.pointerEvents='none';setTimeout(()=>{el.style.pointerEvents='';words.push(w);i++;sent();bars();if(i===steps.length&&hot)done()},RM?0:450)}
+  el.querySelector('#temp').oninput=e=>{T=+e.target.value;el.querySelector('[data-o="tv"]').textContent=T.toFixed(1);update()};
+  el.onclick=e=>{const b=e.target.closest('.bar');if(b&&i<steps.length)return pick(b.dataset.w);
+    const a=e.target.closest('[data-a]');if(!a)return;
+    if(a.dataset.a==='again'){i=0;words=words.slice(0,5);sent();bars();return}
+    if(i>=steps.length)return;if(T>=1.5)hot=true;let r=Math.random();for(const[w,p]of probs()){if((r-=p)<=0)return pick(w)}pick(steps[i][0][0])};
+  sent();bars();
+}
+
+function pipeline(el,done){
+  const S=[['1','Pretraining','Reads trillions of tokens from books, sites and code. Learns to predict the next token.'],['2','Fine-tuning','Trained on example chats. Learns to act like an assistant.'],['3','Feedback','People rank answers (RLHF). Learns what people prefer.'],['4','Inference','Weights frozen. You chat. No learning happens here.']];
+  el.innerHTML=`<div class="pipe">${S.map((s,i)=>`<button class="pnode" data-i="${i}"><span class="disc">${s[0]}</span><b>${s[1]}</b></button>`).join('')}</div><div class="pinfo panel"><span class="hint" style="margin:0">Tap each stage.</span></div>`;
+  const seen=new Set();
+  el.onclick=e=>{const b=e.target.closest('.pnode');if(!b)return;const s=S[b.dataset.i];b.classList.add('seen');if(!seen.has(b.dataset.i))sfx('tap');seen.add(b.dataset.i);el.querySelector('.pinfo').innerHTML=`<b>${s[1]}</b> ${s[2]}`;if(seen.size===4)done()};
+}
+
+function neuron(el,done){
+  const V={x1:6,x2:7,w1:.5,w2:.3,b:-4};let hi=false,lo=false;
+  const sl=(k,l,mn,mx,st)=>`<div class="sl"><label for="n-${k}">${l}</label><output data-o="${k}"></output><input type="range" id="n-${k}" data-k="${k}" min="${mn}" max="${mx}" step="${st}" value="${V[k]}"></div>`;
+  el.innerHTML=`<div class="two"><div><svg class="svgbox" viewBox="0 0 300 180" role="img" aria-label="A neuron with two inputs"><line data-l="w1" x1="60" y1="50" x2="160" y2="90"/><line data-l="w2" x1="60" y1="130" x2="160" y2="90"/><line x1="160" y1="90" x2="250" y2="90" stroke="var(--line)" stroke-width="3"/><circle cx="60" cy="50" r="24" fill="var(--t2)"/><circle cx="60" cy="130" r="24" fill="var(--t1)"/><circle data-l="core" cx="160" cy="90" r="32" fill="var(--accent)"/><text class="svgtxt" x="60" y="54" text-anchor="middle">study</text><text class="svgtxt" x="60" y="134" text-anchor="middle">sleep</text><text x="160" y="95" text-anchor="middle" style="font:700 14px var(--display);fill:var(--accent-ink)">Σ → σ</text><text class="svgtxt" x="262" y="94">pass?</text></svg><p class="lbl" style="margin-top:8px">Chance to pass</p><div class="gauge" data-o="out"></div><div class="flags"><span class="flag" data-f="hi">above 90%</span><span class="flag" data-f="lo">below 10%</span></div></div>
+  <div>${sl('w1','Weight 1 (study)',-2,2,.1)}${sl('w2','Weight 2 (sleep)',-2,2,.1)}${sl('b','Bias',-10,10,.5)}<hr style="border:0;border-top:1px solid var(--line)">${sl('x1','Input: hours studied',0,10,1)}${sl('x2','Input: hours slept',0,10,1)}</div></div>`;
+  const good=css('--good'),bad=css('--bad');
+  function run(user){for(const k in V)el.querySelector(`[data-o="${k}"]`).textContent=V[k];
+    const p=1/(1+Math.exp(-(V.w1*V.x1+V.w2*V.x2+V.b)));el.querySelector('[data-o="out"]').textContent=Math.round(p*100)+'%';
+    ['w1','w2'].forEach(k=>{const l=el.querySelector(`[data-l="${k}"]`);l.setAttribute('stroke',V[k]>=0?good:bad);l.setAttribute('stroke-width',1+Math.abs(V[k])*4)});
+    el.querySelector('[data-l="core"]').setAttribute('r',26+p*12);
+    if(user){if(p>.9&&!hi){hi=true;sfx('ok')}if(p<.1&&!lo){lo=true;sfx('ok')}}
+    el.querySelector('[data-f="hi"]').classList.toggle('on',hi);el.querySelector('[data-f="lo"]').classList.toggle('on',lo);if(hi&&lo)done()}
+  el.oninput=e=>{const k=e.target.dataset.k;if(!k)return;V[k]=+e.target.value;run(true)};
+  run(false);
+}
+
+function modelSize(el,done){
+  const sizes=[1,3,8,14,32,70,405,1000],devs=[['Phone',8],['Laptop',16],['Gaming GPU',24],['Mac Studio',192],['8× H100 server',640]],prec=[['16-bit',2],['8-bit',1],['4-bit',.5]];
+  let si=2,pi=0,shown=0;
+  el.innerHTML=`<p class="lbl">Parameters</p><div class="big mono" data-o="n">0</div><div class="tools"><input type="range" id="ms" min="0" max="${sizes.length-1}" value="${si}" aria-label="Model size"><b data-o="lab" class="mono"></b></div><div class="tools"><span class="lbl" style="margin:0">Precision</span><div class="seg">${prec.map((p,i)=>`<button class="seg-b ${i?'':'on'}" data-p="${i}">${p[0]}</button>`).join('')}</div></div><p style="margin:0">Memory needed: <b class="mono" data-o="mem"></b> <span class="hint">(params × bytes + 20%)</span></p><div class="devs"></div><p class="status" data-o="st"></p>`;
+  const o=k=>el.querySelector(`[data-o="${k}"]`);
+  function run(user){const P=sizes[si]*1e9,gb=sizes[si]*prec[pi][1]*1.2;
+    o('lab').textContent=sizes[si]>=1000?'1T':sizes[si]+'B';o('mem').textContent=gb<10?gb.toFixed(1)+' GB':Math.round(gb).toLocaleString()+' GB';
+    const from=shown,t0=performance.now();shown=P;
+    (function count(t){const k=RM?1:Math.min(1,(t-t0)/600),v=from+(P-from)*(1-Math.pow(1-k,3));o('n').textContent=Math.round(v).toLocaleString();if(k<1&&el.isConnected)requestAnimationFrame(count)})(t0);
+    el.querySelector('.devs').innerHTML=devs.map(([n,c])=>{const fit=gb<=c;return`<div class="dev ${n==='Laptop'?'target':''}"><span>${n} <span class="hint mono">${c} GB</span></span><span class="dev-track"><i style="width:${Math.min(100,gb/c*100)}%;background:var(${fit?'--good':'--bad'})"></i></span><span class="${fit?'ok':'no'}">${fit?'Fits':'Too big'}</span></div>`}).join('');
+    if(!user)return;const st=o('st'),fits=gb<=16;
+    if(sizes[si]===14&&pi===2){st.className='status good';st.textContent='14B at 4-bit = 8.4 GB. The biggest that fits!';done()}
+    else if(fits){st.className='status';st.textContent='Fits on the laptop. Can you go bigger?'}
+    else{st.className='status bad';st.textContent='Too big for a 16 GB laptop.'}}
+  el.querySelector('#ms').oninput=e=>{si=+e.target.value;run(true)};
+  el.onclick=e=>{const b=e.target.closest('[data-p]');if(!b)return;pi=+b.dataset.p;el.querySelectorAll('[data-p]').forEach(x=>x.classList.toggle('on',x===b));run(true)};
+  run(false);
+}
+
+function ctxWin(el,done){
+  const CAP=300,adds=[['Ask a question',30,'user','You: "How do rockets work?"'],['Long AI answer',90,'ai','AI: a long rocket explanation…'],['Paste a document',120,'doc','File: physics-notes.pdf']];
+  let blocks=[['System: "You are a helpful assistant."',40,'sys'],['You: "Hi! My name is Asha."',20,'user',1],['AI: "Nice to meet you, Asha!"',25,'ai']].map(([t,n,c,name])=>({t,n,c,name})),gone=[];
+  el.innerHTML=`<div class="ctx"><div><div class="meter"><span class="mono" data-o="used"></span><div class="meter-bar"><i data-o="fill"></i></div></div><div class="ctx-win" data-o="win"></div><p class="hint">Shrunk to 300 tokens. Real ones hold 100,000+.</p></div><div><p class="lbl">Add to the chat</p><div class="stack">${adds.map((a,i)=>`<button class="btn" data-add="${i}">+ ${a[0]} <span class="mono">${a[1]} tok</span></button>`).join('')}</div><p class="lbl">Fell out of the window</p><div class="gone" data-o="gone"></div><button class="btn primary" data-ask>Ask: "What's my name?"</button><div class="reply" data-o="reply"></div></div></div>`;
+  const o=k=>el.querySelector(`[data-o="${k}"]`),used=()=>blocks.reduce((s,b)=>s+b.n,0);
+  function draw(){o('used').textContent=`${used()} / ${CAP} tokens`;o('fill').style.width=used()/CAP*100+'%';
+    o('win').innerHTML=blocks.map(b=>`<div class="blk ${b.c} ${b.fresh?'fresh':''}" style="height:${b.n}px"><span>${b.t}</span><span class="mono">${b.n}</span></div>`).join('');blocks.forEach(b=>b.fresh=0);
+    o('gone').innerHTML=gone.length?gone.map(b=>`<span class="gchip">${b.t}</span>`).join(''):'<span class="hint" style="margin:0">Nothing yet.</span>'}
+  el.onclick=e=>{const a=e.target.closest('[data-add]');
+    if(a){const[,n,c,t]=adds[a.dataset.add];blocks.push({t,n,c,fresh:1});const g=gone.length;while(used()>CAP)gone.push(...blocks.splice(blocks.findIndex(b=>b.c!=='sys'),1));sfx(gone.length>g?'bad':'tap');o('reply').innerHTML='';draw()}
+    if(e.target.closest('[data-ask]')){const k=blocks.some(b=>b.name);o('reply').innerHTML=k?'<p class="bub ai">Your name is Asha.</p><p class="hint">It still remembers. Keep adding stuff.</p>':'<p class="bub ai">Sorry, I don\'t know your name.</p>';if(!k)done();else mood('oops')}};
+  draw();
+}
+
+function ctxSizes(el,done){
+  const cs=[[4e3,'Small older models'],[32e3,'Many local models'],[128e3,'Common today'],[200e3,'Large cloud models'],[1e6,'Very long context']];
+  el.innerHTML=`<div class="tools"><input type="range" id="cs" min="0" max="${cs.length-1}" value="0" aria-label="Context size"><b class="mono" data-o="n"></b><span class="hint" style="margin:0" data-o="d"></span></div><div class="tiles"><div class="tile"><b data-o="w"></b><span>words</span></div><div class="tile"><b data-o="p"></b><span>book pages</span></div><div class="tile"><b data-o="nv"></b><span>novels</span></div></div><div class="books" aria-hidden="true"></div>`;
+  const o=k=>el.querySelector(`[data-o="${k}"]`);
+  function run(i){const[t,d]=cs[i],w=t*.75;o('n').textContent=t.toLocaleString()+' tokens';o('d').textContent=d;o('w').textContent=Math.round(w).toLocaleString();o('p').textContent=Math.round(w/500).toLocaleString();o('nv').textContent=(w/9e4).toFixed(w<9e4?2:1);
+    const nb=Math.min(40,Math.max(1,Math.round(w/9e4*4)));el.querySelector('.books').innerHTML=Array.from({length:nb},(_,k)=>`<i style="height:${50+(k*37)%30}px;--d:${k*.02}s"></i>`).join('');if(i===cs.length-1)done()}
+  el.querySelector('#cs').oninput=e=>{sfx('tap');run(+e.target.value)};run(0);
+}
+
+function memModes(el,done){
+  const first=[['u',"I'm Asha, and I'm vegetarian."],['ai','Nice to meet you!'],['u','Suggest a dinner for me.']];
+  const M={none:{n:'No memory',chat:first,pay:{messages:[{role:'user',content:'Suggest a dinner for me.'}]},r:'How about grilled chicken with rice?',v:'Forgot you are vegetarian. Only the last message was sent.'},
+    hist:{n:'Chat history',chat:first,pay:{messages:[{role:'user',content:"I'm Asha, and I'm vegetarian."},{role:'assistant',content:'Nice to meet you!'},{role:'user',content:'Suggest a dinner for me.'}]},r:'Try paneer tikka with naan, Asha!',v:'The whole chat is re-sent each time. Works, but long chats cost more.'},
+    long:{n:'Long-term memory',chat:[['d','Next day · new chat'],['u','Suggest a dinner for me.']],pay:{system:'Saved memory: name is Asha. Vegetarian.',messages:[{role:'user',content:'Suggest a dinner for me.'}]},r:'Welcome back, Asha! How about veggie lasagna?',v:'A saved note was slipped into the context. Remembers you on a new day.'}};
+  const seen=new Set();let tm;
+  el.innerHTML=`<div class="seg">${Object.entries(M).map(([k,m])=>`<button class="seg-b" data-m="${k}">${m.n}</button>`).join('')}</div><div class="two" style="margin-top:14px"><div class="panel"><p class="lbl">What you see</p><div class="chatbox"></div></div><div><p class="lbl">What the model receives</p><pre class="code" data-o="pay"></pre></div></div><div class="verdict" data-o="v" hidden></div>`;
+  function show(k){const m=M[k];clearTimeout(tm);seen.add(k);el.querySelectorAll('[data-m]').forEach(b=>b.classList.toggle('on',b.dataset.m===k));
+    const cb=el.querySelector('.chatbox');cb.innerHTML=m.chat.map(([w,t])=>w==='d'?`<div class="divider">${t}</div>`:`<p class="bub ${w}">${t}</p>`).join('')+'<span class="typing"><i></i><i></i><i></i></span>';
+    el.querySelector('[data-o="pay"]').textContent=JSON.stringify(m.pay,null,2);el.querySelector('[data-o="v"]').hidden=true;
+    tm=setTimeout(()=>{cb.querySelector('.typing').outerHTML=`<p class="bub ai">${m.r}</p>`;const v=el.querySelector('[data-o="v"]');v.hidden=false;v.textContent=m.v;mood(k==='none'?'oops':'happy');sfx(k==='none'?'bad':'ok');if(seen.size===3)done()},RM?0:900)}
+  el.onclick=e=>{const b=e.target.closest('[data-m]');if(b)show(b.dataset.m)};
+  show('none');
+}
+
+function cloudLocal(el,done){
+  let mode='cloud',net=true;
+  const F={cloud:[['Quality','Strongest models'],['Privacy','Text goes to provider'],['Cost','Subscription or per token'],['Internet','Required']],local:[['Quality','Limited by your hardware'],['Privacy','Never leaves device'],['Cost','Free after hardware'],['Internet','Not needed']]};
+  el.innerHTML=`<div class="tools"><div class="seg"><button class="seg-b on" data-m="cloud">Cloud model</button><button class="seg-b" data-m="local">Local model</button></div><div class="seg"><button class="seg-b on" data-n="1">Internet on</button><button class="seg-b" data-n="0">Internet off</button></div><button class="btn primary" data-a="send">Send prompt</button></div>
+  <svg class="svgbox" viewBox="0 0 600 190" role="img" aria-label="Laptop and cloud server diagram"><line data-o="wire" x1="170" y1="95" x2="440" y2="95" stroke-width="3" stroke-dasharray="8 7"/><rect x="40" y="40" width="130" height="85" rx="8" fill="var(--paper)" stroke="var(--ink)" stroke-width="2.5"/><rect x="25" y="125" width="160" height="10" rx="4" fill="var(--ink)"/><g data-o="chip" opacity=".25"><rect x="75" y="62" width="60" height="40" rx="6" fill="var(--accent)"/><text x="105" y="87" text-anchor="middle" style="font:700 12px var(--display);fill:var(--accent-ink)">Model</text></g><text class="svgmut" x="105" y="160" text-anchor="middle">your laptop</text><g data-o="cloud"><path d="M450 120 h120 a28 28 0 0 0 -6 -55 a38 38 0 0 0 -70 -14 a30 30 0 0 0 -44 30 a20 20 0 0 0 0 39z" fill="var(--soft)" stroke="var(--accent)" stroke-width="2.5"/><text x="512" y="100" text-anchor="middle" style="font:700 12px var(--display);fill:var(--ink)">Model</text></g><text class="svgmut" x="512" y="160" text-anchor="middle">provider servers</text><text data-o="x" x="305" y="80" text-anchor="middle" style="font:800 26px var(--display);fill:var(--bad)" opacity="0">✕</text><circle data-o="pk" cx="170" cy="95" r="8" fill="var(--hi)" stroke="var(--ink)" stroke-width="2"/></svg>
+  <p class="status" data-o="st"></p><div class="facts"></div>`;
+  const o=k=>el.querySelector(`[data-o="${k}"]`);let busy=false;
+  function paint(){o('chip').setAttribute('opacity',mode==='local'?1:.25);o('cloud').setAttribute('opacity',mode==='cloud'?1:.35);o('wire').setAttribute('stroke',net?'var(--accent)':'var(--bad)');o('x').setAttribute('opacity',0);
+    el.querySelector('.facts').innerHTML=F[mode].map(([a,b])=>`<div class="fact"><span>${a}</span>${b}</div>`).join('')}
+  async function send(){if(busy)return;busy=true;const pk=o('pk'),st=o('st'),d=RM?1:650,an=kf=>{pk.animate(kf,{duration:d,easing:'ease-in-out',fill:'forwards'});return new Promise(r=>setTimeout(r,d))};
+    st.className='status';st.textContent='Sending…';
+    if(mode==='cloud'){
+      if(!net){await an([{transform:'translate(0,0)'},{transform:'translate(130px,0)'}]);o('x').setAttribute('opacity',1);st.className='status bad';st.textContent='Failed! Cloud models need the internet.';mood('oops');sfx('bad');await an([{transform:'translate(130px,0)'},{transform:'translate(0,0)'}])}
+      else{await an([{transform:'translate(0,0)'},{transform:'translate(330px,0)'}]);await an([{transform:'translate(330px,0)'},{transform:'translate(0,0)'}]);st.className='status good';st.textContent='Reply received from the cloud.';sfx('ok')}
+    }else{await an([{transform:'translate(0,0)'},{transform:'translate(-65px,-12px)'}]);await an([{transform:'translate(-65px,-12px)'},{transform:'translate(0,0)'}]);st.className='status good';st.textContent=net?'Reply made on your laptop. Now cut the internet.':'Works with no internet!';sfx('ok');if(!net)done()}
+    busy=false}
+  el.onclick=e=>{const m=e.target.closest('[data-m]'),n=e.target.closest('[data-n]');
+    if(m){mode=m.dataset.m;el.querySelectorAll('[data-m]').forEach(b=>b.classList.toggle('on',b===m));paint()}
+    if(n){net=n.dataset.n==='1';el.querySelectorAll('[data-n]').forEach(b=>b.classList.toggle('on',b===n));paint()}
+    if(e.target.closest('[data-a]'))send()};
+  paint();
+}
+
+function costCalc(el,done){
+  const V={m:30,i:1500,o:400,pi:3,po:15,sub:20};
+  const sl=(k,l,mn,mx,st)=>`<div class="sl"><label for="c-${k}">${l}</label><output data-o="${k}"></output><input type="range" id="c-${k}" data-k="${k}" min="${mn}" max="${mx}" step="${st}" value="${V[k]}"></div>`;
+  el.innerHTML=`<div class="two"><div>${sl('m','Messages per day',1,300,1)}${sl('i','Input tokens per message',200,8000,100)}${sl('o','Output tokens per message',100,2000,50)}<div class="prices"><label for="c-pi">$ / 1M input<input type="number" id="c-pi" data-k="pi" value="3" min="0" step="0.1"></label><label for="c-po">$ / 1M output<input type="number" id="c-po" data-k="po" value="15" min="0" step="0.1"></label><label for="c-sub">Subscription $/mo<input type="number" id="c-sub" data-k="sub" value="20" min="0"></label></div></div>
+  <div><p class="lbl">Monthly cost</p><div class="cost-bars"><div class="cb"><span>API</span><span class="cb-track"><i data-o="ba" style="background:var(--accent)"></i></span><b data-o="va"></b></div><div class="cb"><span>Subscription</span><span class="cb-track"><i data-o="bs" style="background:var(--hi)"></i></span><b data-o="vs"></b></div></div><p class="verdict" data-o="v"></p><p class="hint">Example prices. Check your provider's page.</p></div></div>`;
+  const o=k=>el.querySelector(`[data-o="${k}"]`);
+  function run(){['m','i','o'].forEach(k=>o(k).textContent=V[k].toLocaleString());
+    const a=apiCost(V.m,V.i,V.o,V.pi,V.po),mx=Math.max(a,V.sub,1);o('va').textContent='$'+a.toFixed(2);o('vs').textContent='$'+V.sub.toFixed(2);o('ba').style.width=a/mx*100+'%';o('bs').style.width=V.sub/mx*100+'%';
+    o('v').textContent=a<V.sub?`API is cheaper by $${(V.sub-a).toFixed(2)}/month. Keep pushing the sliders.`:`API costs ${(a/Math.max(V.sub,.01)).toFixed(1)}× the subscription. Heavy use adds up!`;
+    if(a>V.sub)done()}
+  el.oninput=e=>{const k=e.target.dataset.k;if(!k)return;V[k]=Math.max(0,+e.target.value||0);run()};
+  run();
+}
+
+function apiAnatomy(el,done){
+  const X={url:['Endpoint','Where your code sends the request.'],key:['API key','Your secret. Proves who you are and who pays.'],ver:['API version','Which API version your code expects.'],model:['Model','Which model runs. Bigger = smarter, slower, pricier.'],max:['max_tokens','Caps the reply length and cost.'],msgs:['messages','The conversation. This is the context.']};
+  el.innerHTML=`<pre class="code"><span class="hot" data-k="url">POST https://api.anthropic.com/v1/messages</span>
+<span class="hot" data-k="key">x-api-key: sk-ant-••••••••••••</span>
+<span class="hot" data-k="ver">anthropic-version: 2023-06-01</span>
+content-type: application/json
+
+{
+  <span class="hot" data-k="model">"model": "claude-sonnet-5-5"</span>,
+  <span class="hot" data-k="max">"max_tokens": 300</span>,
+  <span class="hot" data-k="msgs">"messages": [
+    { "role": "user", "content": "Explain tokens in one line." }
+  ]</span>
+}</pre><div class="panel info" data-o="info"><span class="hint" style="margin:0">Tap a highlighted part. 0 of 6 found.</span></div><div class="tools"><button class="btn primary" data-a="send">Send request</button></div><pre class="code" data-o="resp" hidden></pre>`;
+  const seen=new Set(),o=k=>el.querySelector(`[data-o="${k}"]`);let busy=false,sent=false;
+  const check=()=>{if(seen.size===6&&sent)done()};
+  el.onclick=e=>{const h=e.target.closest('.hot');
+    if(h){h.classList.add('seen');if(!seen.has(h.dataset.k))sfx('tap');seen.add(h.dataset.k);const[t,d]=X[h.dataset.k];o('info').innerHTML=`<b>${t}</b> ${d}<br><span class="hint">${seen.size} of 6 found</span>`;check()}
+    if(e.target.closest('[data-a]')&&!busy){busy=true;const r=o('resp');r.hidden=false;r.textContent='';
+      const txt=`HTTP 200 OK\n{\n  "content": [{ "type": "text",\n    "text": "Tokens are the small chunks of text a model reads and writes." }],\n  "usage": { "input_tokens": 14, "output_tokens": 15 }\n}`;
+      let i=0;const iv=setInterval(()=>{if(!r.isConnected)return clearInterval(iv);i+=RM?txt.length:3;r.textContent=txt.slice(0,i);if(i>=txt.length){clearInterval(iv);busy=false;sent=true;sfx('ok');if(seen.size<6)toast('Response in! Now find all 6 highlighted parts.');check()}},16)}};
+}
+
+function promptBuilder(el,done){
+  const I=[['role','Role','You are a friendly fitness coach.'],['ctx','Context',"I'm 30, a beginner, 20 minutes a day, no equipment."],['task','Task','Make me a weekly workout plan.'],['fmt','Format','Show it as a table: day, exercise, reps.'],['lim','Constraints','No jumping (bad knees). Keep it short.'],['ex','Example','Like: "Mon | Wall push-ups | 3×10"']];
+  const on=new Set(['task']);
+  el.innerHTML=`<div class="ings">${I.map(([k,l])=>`<button class="ing ${k==='task'?'on':''}" data-k="${k}" ${k==='task'?'disabled':''} aria-pressed="${k==='task'}">${k==='task'?'✓ ':'+ '}${l}</button>`).join('')}</div><div class="two"><div><p class="lbl">Your prompt</p><div class="panel prompt-txt mono" style="font-size:.85rem"></div><div class="pmeter">${I.map(()=>'<i></i>').join('')}</div></div><div><p class="lbl">The answer you get</p><div class="panel" data-o="ans"></div></div></div>`;
+  function run(){el.querySelector('.prompt-txt').innerHTML=I.filter(([k])=>on.has(k)).map(([,,t])=>`<span class="p-line">${t}</span>`).join('');
+    el.querySelectorAll('.pmeter i').forEach((m,i)=>m.classList.toggle('on',i<on.size));
+    const n=on.size,a=el.querySelector('[data-o="ans"]');
+    a.innerHTML=n<=2?'<span class="badge">Generic</span><p style="margin:0">Do cardio and weights 5 days a week. Try running, burpees and bench press.</p>':n<=4?'<span class="badge">Better</span><p style="margin:0">Beginner plan: 20-minute bodyweight sessions Mon, Wed, Fri with push-ups, squats and planks.</p>':'<span class="badge">Precise · knee-safe</span><table class="mini"><tr><th>Day</th><th>Exercise</th><th>Reps</th></tr><tr><td>Mon</td><td>Wall push-ups</td><td>3×10</td></tr><tr><td>Tue</td><td>Glute bridges</td><td>3×12</td></tr><tr><td>Wed</td><td>Brisk walk</td><td>20 min</td></tr><tr><td>Thu</td><td>Chair squats</td><td>3×10</td></tr><tr><td>Fri</td><td>Plank</td><td>3×20 s</td></tr></table>';
+    if(n>=5)done()}
+  el.onclick=e=>{const b=e.target.closest('.ing:not(:disabled)');if(!b)return;const k=b.dataset.k;on.has(k)?on.delete(k):on.add(k);b.classList.toggle('on');b.setAttribute('aria-pressed',on.has(k));b.textContent=(on.has(k)?'✓ ':'+ ')+I.find(x=>x[0]===k)[1];sfx('tap');run()};
+  run();
+}
+
+function meaningMap(el,done){
+  const P={cat:[14,16],kitten:[9,22],dog:[23,12],puppy:[20,21],lion:[29,7],pizza:[64,12],burger:[74,16],pasta:[60,21],salad:[71,24],car:[15,46],bus:[25,52],bike:[9,55],train:[30,44],happy:[64,44],joy:[74,48],sad:[58,55],angry:[68,58]};
+  el.innerHTML=`<svg class="svgbox" viewBox="0 0 90 64" role="img" aria-label="Words placed on a 2D map of meaning" style="border:1px solid var(--line);border-radius:12px;background:var(--paper)"><text class="grp" x="5" y="4">ANIMALS</text><text class="grp" x="56" y="4">FOOD</text><text class="grp" x="5" y="40">VEHICLES</text><text class="grp" x="54" y="38">FEELINGS</text><g data-o="lines"></g>${Object.entries(P).map(([w,[x,y]])=>`<g class="wd" data-w="${w}" tabindex="0" role="button" aria-label="${w}"><circle cx="${x}" cy="${y}" r="1.3"/><text x="${x+2}" y="${y+1.2}">${w}</text><rect x="${x-2}" y="${y-3}" width="${w.length*2+5}" height="6" fill="transparent"/></g>`).join('')}</svg><div class="panel info" data-o="info"><span class="hint" style="margin:0">Tap a word. 0 of 3 explored.</span></div>`;
+  const seen=new Set();
+  function pick(w){const[x,y]=P[w];seen.add(w);sfx('tap');el.querySelectorAll('.wd').forEach(g=>g.classList.toggle('sel',g.dataset.w===w));
+    const nn=Object.entries(P).filter(([k])=>k!==w).map(([k,[a,b]])=>[k,Math.hypot(a-x,b-y)]).sort((a,b)=>a[1]-b[1]).slice(0,3);
+    el.querySelector('[data-o="lines"]').innerHTML=nn.map(([k])=>`<line class="nline" x1="${x}" y1="${y}" x2="${P[k][0]}" y2="${P[k][1]}"/>`).join('');
+    const vec=[x/45-1,y/32-1,Math.sin(x*y),Math.cos(x+y)].map(v=>v.toFixed(2)).join(', ');
+    el.querySelector('[data-o="info"]').innerHTML=`<b>"${w}"</b> → <span class="mono">[${vec}, …]</span><br>Nearest: ${nn.map(([k])=>`<b>${k}</b>`).join(' · ')} <span class="hint">· ${seen.size} of 3 explored</span>`;
+    if(seen.size>=3)done()}
+  el.onclick=e=>{const g=e.target.closest('.wd');if(g)pick(g.dataset.w)};
+  el.onkeydown=e=>{const g=e.target.closest('.wd');if(g&&(e.key==='Enter'||e.key===' ')){e.preventDefault();pick(g.dataset.w)}};
+}
+
+function ragFlow(el,done){
+  const names=['Question','Embed','Search','Build context','Answer'];let i=0;
+  const docs=[['Shipping takes 3–5 business days.','0.31'],['Refunds accepted within 30 days of purchase.','0.92'],['Support hours: 9–5, Monday to Friday.','0.18']];
+  const view=[()=>`<p class="bub u">What's your refund window?</p>`,
+    ()=>`<div class="flow"><span class="f">What's your refund window?</span><span class="ar">→</span><span class="f mono">[0.21, −0.67, 0.44, …]</span></div>`,
+    ()=>`<div class="docs">${docs.map(([d,s],k)=>`<div class="doc ${k===1?'best':''}"><span>${d}</span><span class="mono">${s}</span></div>`).join('')}</div>`,
+    ()=>`<pre class="code">System: Answer using only these documents.
+Doc [policy.pdf]: Refunds accepted within 30 days of purchase.
+
+User: What's your refund window?</pre>`,
+    ()=>`<p class="bub ai">Refunds within 30 days of purchase. (Source: policy.pdf)</p>`];
+  el.innerHTML=`<div class="stepper">${names.map(n=>`<span>${n}</span>`).join('')}</div><div class="panel" data-o="v" style="min-height:140px"></div><div class="tools"><button class="btn primary" data-a="n">Next stage</button></div>`;
+  function show(){el.querySelectorAll('.stepper span').forEach((s,k)=>{s.className=k===i?'on':k<i?'past':''});el.querySelector('[data-o="v"]').innerHTML=`<div class="scr">${view[i]()}</div>`;el.querySelector('[data-a]').textContent=i===4?'Replay':'Next stage';if(i===4)done()}
+  el.onclick=e=>{if(e.target.closest('[data-a]')){i=(i+1)%5;sfx('tap');show()}};
+  show();
+}
+
+function agentLoop(el,done){
+  const L=[['think','I need Paris weather, then convert to °F.'],['act','get_weather(city="Paris")'],['observe','→ 18 °C, cloudy'],['think','Convert: 18 × 9/5 + 32.'],['act','calculator("18*9/5+32")'],['observe','→ 64.4'],['answer',"About 64 °F and cloudy in Paris."]];
+  const pos={think:[110,40],act:[180,160],observe:[40,160]};let i=0,auto;
+  el.innerHTML=`<div class="loopwrap"><svg class="svgbox" viewBox="0 0 220 200" role="img" aria-label="Agent loop: think, act, observe"><circle cx="110" cy="115" r="72" fill="none" stroke="var(--line)" stroke-width="3" stroke-dasharray="6 6"/>${Object.entries(pos).map(([k,[x,y]])=>`<g class="lnode" data-n="${k}"><circle cx="${x}" cy="${y}" r="32"/><text x="${x}" y="${y+5}">${k[0].toUpperCase()+k.slice(1)}</text></g>`).join('')}</svg><div><p class="lbl">Agent log</p><div class="log"><div class="think">Task: What's the weather in Paris, in °F?</div></div></div></div><div class="tools"><button class="btn primary" data-a="n">Next step</button><button class="btn ghost" data-a="auto">Auto-play</button></div>`;
+  function next(){if(i>=L.length){clearInterval(auto);return}const[k,t]=L[i++];el.querySelectorAll('.lnode').forEach(g=>g.classList.toggle('on',g.dataset.n===k));sfx('tap');
+    el.querySelector('.log').insertAdjacentHTML('beforeend',`<div class="${k}"><b>${k.toUpperCase()}</b> ${esc(t)}</div>`);
+    if(i===L.length){clearInterval(auto);el.querySelectorAll('[data-a]').forEach(b=>b.disabled=true);done()}}
+  el.onclick=e=>{const a=e.target.closest('[data-a]');if(!a)return;if(a.dataset.a==='n')next();else{clearInterval(auto);auto=setInterval(()=>el.isConnected?next():clearInterval(auto),RM?50:1000);next()}};
+}
+
+/* ================= guided simulations: every lesson is a small working copy of a real tool ================= */
+const wait=ms=>new Promise(r=>setTimeout(r,RM?0:ms));
+function tasker(el,labels,done){
+  const box=document.createElement('div');box.className='tasks';box.innerHTML=labels.map((l,i)=>`<span class="task" data-t="${i}">${l}</span>`).join('');el.prepend(box);
+  const got=new Set();
+  return i=>{if(i<0||got.has(i))return;got.add(i);box.querySelector(`[data-t="${i}"]`).classList.add('on');sfx('ok');mood('happy');if(got.size===labels.length)done()};
+}
+const SL={u:t=>`<p class="bub u">${t}</p>`,ai:t=>`<p class="bub ai">${t}</p>`,'$':t=>`<div class="term">$ ${t}</div>`,out:t=>`<div class="term out">${t}</div>`,err:t=>`<div class="sline err">${t}</div>`,ok:t=>`<div class="sline okl">${t}</div>`,sys:t=>`<div class="sline">${t}</div>`,tool:t=>`<div class="toolc"><span class="tag">tool call</span><span class="mono">${t}</span></div>`};
+const simLines=ls=>ls.map(([k,t])=>SL[k](t)).join('');
+const simWin=(app,inner,cls='')=>`<div class="sim-win ${cls}"><div class="sim-bar"><i></i><i></i><i></i><span>${app}</span></div><div class="sim-body">${inner}</div></div>`;
+
+// A chat app with settings, tap-to-send messages and an "under the hood" inspector. Each chip's r(state) returns the scripted reply.
+function chatSim(el,done,c){
+  const st={msgs:[],set:{},notes:[],docs:[],tin:0,tout:0,usd:0,last:0},price=c.price||[3,15];let busy=false;
+  for(const k in c.set||{})st.set[k]=c.set[k].v;
+  const setUI=c.set?`<div class="sim-set">${Object.entries(c.set).map(([k,s])=>s.o?`<label>${s.l} <select data-s="${k}">${s.o.map(o=>`<option${o===s.v?' selected':''}>${o}</option>`).join('')}</select></label>`:`<label><input type="checkbox" data-s="${k}"${s.v?' checked':''}> ${s.l}</label>`).join('')}</div>`:'';
+  el.innerHTML=`<div class="simgrid${c.insp.length?'':' one'}"><div class="sim-win"><div class="sim-bar"><i></i><i></i><i></i><span>${c.app}</span><button class="btn small" data-new>New chat</button></div>${setUI}<div class="sim-body chatlog" data-o="log"><p class="hint" style="margin:auto;text-align:center">Tap a message below to send it.</p></div><div class="sim-chips">${c.chips.map(ch=>`<button class="schip" data-c="${ch.id}">${esc(ch.t)}</button>`).join('')}</div></div>${c.insp.length?'<div class="insp"><p class="tag" style="margin:0">Under the hood</p><div class="insp" data-o="insp"></div></div>':''}</div>`;
+  const hit=tasker(el,c.tasks.map(t=>t[0]),done),emit=ev=>c.tasks.forEach(([,e],i)=>e===ev&&hit(i));
+  const log=el.querySelector('[data-o="log"]'),ins=el.querySelector('[data-o="insp"]');
+  const sysTxt=()=>[c.sys,st.set.mem&&st.notes.length?'Saved memory: '+st.notes.join('; '):'',...st.docs].filter(Boolean).join('\n');
+  const ctxTok=()=>tokenize(sysTxt()+' '+st.msgs.map(m=>m[1]).join(' ')).length;
+  const bars=a=>a.map(([w,p])=>`<div class="bar" style="cursor:default"><span class="bar-w">${esc(w.trim()||'·')}</span><span class="bar-track"><span class="bar-fill" style="width:${p}%"></span></span><span class="bar-p mono">${p}%</span></div>`).join('');
+  function insp(pred){
+    if(!ins)return;const P=[];
+    if(c.insp.includes('ctx'))P.push(`<p class="lbl" style="margin:0">Context sent to the model · ${ctxTok()} tokens</p><pre class="code">${esc(JSON.stringify({system:sysTxt()||undefined,messages:st.msgs.map(([role,content])=>({role,content}))},null,1))}</pre>`);
+    if(c.insp.includes('mem'))P.push(`<p class="lbl" style="margin:0">Saved memory</p><div class="panel">${st.notes.length?st.notes.map(esc).join('<br>'):'<span class="hint" style="margin:0">Nothing saved.</span>'}</div>`);
+    if(c.insp.includes('cost'))P.push(`<div class="tiles"><div class="tile"><b>${st.last.toLocaleString()}</b><span>tokens in your last message</span></div><div class="tile"><b>${st.tin.toLocaleString()} / ${st.tout.toLocaleString()}</b><span>tokens in / out so far</span></div><div class="tile"><b>$${st.usd.toFixed(4)}</b><span>API cost at $${price[0]} in / $${price[1]} out per 1M (example)</span></div></div>`);
+    if(c.insp.includes('pred'))P.push(`<p class="lbl" style="margin:0">Next-token guesses</p><div class="bars" data-o="pred">${pred||'<span class="hint" style="margin:0">Send a message to watch it predict.</span>'}</div>`);
+    ins.innerHTML=P.join('');
+  }
+  async function send(ch){
+    busy=true;el.querySelectorAll('.schip,[data-new]').forEach(b=>b.disabled=true);
+    if(log.querySelector('.hint'))log.innerHTML='';
+    log.insertAdjacentHTML('beforeend',`<p class="bub u">${esc(ch.t)}</p>`);st.msgs.push(['user',ch.t]);
+    const r=ch.r(st);if(r.ctx)st.docs.push(r.ctx);
+    st.last=tokenize(ch.t).length+(ch.in||0);st.tin+=ctxTok()+(ch.in||0);insp();
+    const ty=document.createElement('span');ty.className='typing';ty.innerHTML='<i></i><i></i><i></i>';log.append(ty);log.scrollTop=log.scrollHeight;
+    await wait(600);
+    for(const[n,a,res]of r.tools||[]){ty.insertAdjacentHTML('beforebegin',`<div class="toolc"><span class="tag">tool call · run by the app</span><span class="mono">${esc(n)}(${esc(a)})</span><span class="mono">→ ${esc(res)}</span></div>`);sfx('tap');log.scrollTop=log.scrollHeight;await wait(800)}
+    ty.remove();
+    const b=document.createElement('p');b.className='bub ai'+(r.err?' err':'');log.append(b);
+    const toks=r.cand?r.cand.map(x=>x[0]):tokenize(r.t);
+    for(let i=0;i<toks.length;i++){b.textContent+=toks[i];if(r.cand){const pb=ins.querySelector('[data-o="pred"]');if(pb)pb.innerHTML=bars(r.cand[i][1])}log.scrollTop=log.scrollHeight;await wait(r.cand?450:28)}
+    if(!r.err)st.msgs.push(['assistant',b.textContent]);
+    st.tout+=r.out||toks.length;st.usd=(st.tin*price[0]+st.tout*price[1])/1e6;if(r.note)st.notes.push(r.note);
+    insp(r.cand?bars(r.cand[r.cand.length-1][1]):'');emit(r.ev||ch.id);
+    busy=false;el.querySelectorAll('.schip,[data-new]').forEach(b=>b.disabled=false);
+  }
+  el.onclick=e=>{if(busy)return;const b=e.target.closest('[data-c]');if(b)send(c.chips.find(x=>x.id===b.dataset.c));
+    if(e.target.closest('[data-new]')){st.msgs=[];st.docs=[];log.innerHTML='<div class="divider">New chat</div>';insp();sfx('tap');emit('new')}};
+  el.onchange=e=>{const k=e.target.dataset.s;if(!k)return;st.set[k]=e.target.type==='checkbox'?e.target.checked:e.target.value;sfx('tap');insp();emit(k+':'+st.set[k])};
+  insp();
+}
+
+function runPipe(el,done,{pieces}){
+  el.innerHTML=`<div class="buildrow">${pieces.map((_,i)=>`${i?'<span class="arw">→</span>':''}<div class="bp" data-i="${i}"><b>?</b></div>`).join('')}</div><div class="tools"><button class="btn primary" data-run>▶ Run</button></div>`;
+  let busy=false;
+  el.onclick=async e=>{if(!e.target.closest('[data-run]')||busy)return;busy=true;const bs=el.querySelectorAll('.bp');bs.forEach(b=>{b.className='bp';b.innerHTML='<b>?</b>'});
+    for(let i=0;i<pieces.length;i++){const[a,s]=pieces[i];bs[i].className='bp next';sfx('tap');await wait(450);bs[i].className='bp on';bs[i].innerHTML=`<b>${a}</b>${s?`<small>${s}</small>`:''}`;await wait(300)}
+    el.querySelector('[data-run]').textContent='▶ Run again';busy=false;done()};
+}
+function split(el,done,{words}){
+  let n=0;el.innerHTML=`<div class="splitrow">${words.map(([w],i)=>`<button class="sw" data-i="${i}">${w}</button>`).join('')}</div>`;
+  el.onclick=e=>{const b=e.target.closest('.sw');if(!b)return;const[,parts]=words[b.dataset.i],d=document.createElement('div');d.className='swout';
+    d.innerHTML=parts.map((p,k)=>`<span class="tok c${hash(p)%6}" style="--d:${k*.12}s">${esc(p)}</span>`).join('')+`<small class="mono">${parts.length} token${parts.length>1?'s':''}</small>`;b.replaceWith(d);sfx('tap');if(++n===words.length)done()};
+}
+function knob(el,done){
+  el.innerHTML=`<div class="knob"><div class="kbox"><span class="tag">Input</span><b>3</b></div><span class="arw">×</span><div class="kbox w"><span class="tag">Weight</span><b data-o="w"></b></div><span class="arw">=</span><div class="kbox" data-o="ob"><span class="tag">Output</span><b data-o="o"></b></div><span class="arw">goal</span><div class="kbox target"><span class="tag">Goal</span><b>12</b></div></div><div class="tools"><label for="kn"><b>Turn the weight</b></label><input type="range" id="kn" min="0" max="8" step="0.5" value="1"></div><p class="lbl">Error</p><div class="meter-bar" style="height:14px"><i data-o="e" style="background:var(--bad)"></i></div>`;
+  function run(w){const o=3*w,err=Math.abs(12-o);el.querySelector('[data-o="w"]').textContent=w;el.querySelector('[data-o="o"]').textContent=o;el.querySelector('[data-o="e"]').style.width=Math.min(100,err/12*100)+'%';el.querySelector('[data-o="ob"]').classList.toggle('hit',!err);if(!err){sfx('ok');mood('happy');done()}}
+  el.querySelector('#kn').oninput=e=>run(+e.target.value);run(1);
+}
+function inboxSim(el,done){
+  const M=[['Meeting moved to 3pm',0],['FREE iPhone, click now',1],['Fr3e g1ft card!!!',1],['Your invoice for May',0],['W1n a cruise, act fast',1],['Lunch tomorrow?',0]];
+  const P={rule:M.map(([s])=>/FREE/.test(s)?1:0),'10':[0,1,0,0,0,1],'1,000':[0,1,1,1,1,0],'100,000':[0,1,1,0,1,0]};
+  let mode='rule',ex='10',busy=false;
+  el.innerHTML=`<div class="tools"><div class="seg"><button class="seg-b on" data-m="rule">Rule: subject has "FREE"</button><button class="seg-b" data-m="ml">Learned model</button></div><label data-ex hidden>trained on <select id="ex">${['10','1,000','100,000'].map(x=>`<option>${x}</option>`).join('')}</select> examples</label><button class="btn primary" data-run>▶ Run filter</button></div><div class="folders"><div class="panel"><p class="lbl">Inbox</p><div data-f="0"></div></div><div class="panel"><p class="lbl">Spam</p><div data-f="1"></div></div></div><p class="status" data-o="sc"></p>`;
+  const hit=tasker(el,['Run the rule','Run a model trained on 10 examples','Run one trained on 100,000'],done);
+  el.querySelector('#ex').onchange=e=>ex=e.target.value;
+  el.onclick=async e=>{const m=e.target.closest('[data-m]');if(m){mode=m.dataset.m;el.querySelectorAll('[data-m]').forEach(b=>b.classList.toggle('on',b===m));el.querySelector('[data-ex]').hidden=mode==='rule'}
+    if(!e.target.closest('[data-run]')||busy)return;busy=true;const pred=P[mode==='rule'?'rule':ex];el.querySelectorAll('[data-f]').forEach(f=>f.innerHTML='');let ok=0;
+    for(let i=0;i<M.length;i++){const good=pred[i]===M[i][1];ok+=good;el.querySelector(`[data-f="${pred[i]}"]`).insertAdjacentHTML('beforeend',`<div class="mail ${good?'':'bad'}">${good?'':'✗ '}${M[i][0]}</div>`);sfx(good?'tap':'bad');await wait(220)}
+    const sc=el.querySelector('[data-o="sc"]');sc.className='status '+(ok===6?'good':'bad');sc.textContent=`${ok} of 6 sorted correctly`;busy=false;
+    hit(mode==='rule'?0:ex==='10'?1:ex==='100,000'?2:-1)};
+}
+function trainStages(el,done){
+  const S=['Pretrain on the internet','Fine-tune on chats','Feedback from people'],out=['xq7 bnn ;;r lamp ok?','What is the capital of Germany? What is the capital of Spain? What is','The capital of France is Paris.','The capital of France is Paris. Want a fun fact about it?'];let n=0;
+  el.innerHTML=`<div class="tools">${S.map((s,i)=>`<button class="btn" data-s="${i}" ${i?'disabled':''}>${i+1}. ${s}</button>`).join('')}</div><div class="simgrid"><div>${simWin('Test console','<p class="bub u">What is the capital of France?</p><div data-o="ans"></div>')}<div class="tools"><button class="btn primary" data-ask>Ask the model</button></div></div><div class="insp"><p class="tag" style="margin:0">Model status</p><div class="panel" data-o="st"></div></div></div>`;
+  const hit=tasker(el,['Ask the untrained model','Pretrain, then ask','Fine-tune, then ask','Add feedback, then ask'],done);
+  const status=()=>el.querySelector('[data-o="st"]').textContent=['Random weights. Knows nothing.','Base model: it autocompletes text.','Assistant: it answers questions.','Helpful assistant: answers the way people like.'][n];
+  el.onclick=async e=>{const s=e.target.closest('[data-s]');if(s&&!s.disabled){n=+s.dataset.s+1;s.disabled=true;s.classList.add('done-b');const nx=el.querySelector(`[data-s="${n}"]`);if(nx)nx.disabled=false;el.querySelector('[data-o="ans"]').innerHTML='';sfx('ok');status()}
+    if(e.target.closest('[data-ask]')){const a=el.querySelector('[data-o="ans"]');a.innerHTML='<span class="typing"><i></i><i></i><i></i></span>';await wait(600);a.innerHTML=`<p class="bub ai">${out[n]}</p>`;hit(n)}};
+  status();
+}
+function modelHub(el,done){
+  const H=[['Llama 3.2 1B',1.3,90],['Llama 3.1 8B',4.9,35],['Qwen 2.5 14B',9,18],['Llama 3.1 70B',40,0],['Llama 3.1 405B',230,0]],RAM=16;
+  el.innerHTML=`<div class="simgrid"><div>${simWin('Model hub · 4-bit downloads',H.map(([n,g],i)=>`<div class="hubrow"><b>${n}</b><span class="mono hint" style="margin:0">${g} GB</span><button class="btn small" data-h="${i}">Run</button></div>`).join(''))}<p class="hint">Sizes are approximate.</p></div><div class="insp"><p class="tag" style="margin:0">Your laptop · ${RAM} GB RAM</p><div class="ram"><i data-o="ram"></i></div><p class="mono" style="margin:0" data-o="use">0 / ${RAM} GB used</p><div data-o="out"></div></div></div>`;
+  const hit=tasker(el,['Run a model that fits','Try one that is too big'],done);let busy=false;
+  el.onclick=async e=>{const b=e.target.closest('[data-h]');if(!b||busy)return;busy=true;const[n,g,tps]=H[b.dataset.h],r=el.querySelector('[data-o="ram"]'),o=el.querySelector('[data-o="out"]');
+    r.style.width='0';r.className='';o.innerHTML=`<div class="term out">loading ${n}…</div>`;await wait(60);r.style.width=Math.min(100,g/RAM*100)+'%';el.querySelector('[data-o="use"]').textContent=`${Math.min(g,RAM)} / ${RAM} GB used`;await wait(750);
+    if(g>RAM){r.className='full';o.innerHTML=`<div class="sline err">Out of memory: needs ${g} GB. Crashed.</div>`;const ram=el.querySelector('.ram');ram.classList.remove('shk');void ram.offsetWidth;ram.classList.add('shk');sfx('bad');mood('oops');hit(1)}
+    else{o.innerHTML=`<div class="sline okl">Running ${n} · about ${tps} tokens/sec</div>`;sfx('ok');hit(0)}busy=false};
+}
+function terminalSim(el,done){
+  let pulled=false,running=false,net=true,busy=false;
+  el.innerHTML=`<div class="tools"><label><input type="checkbox" id="wifi" checked> Wi-Fi</label></div>${simWin('Terminal · ollama','<div data-o="t" style="display:grid;gap:6px"><div class="term out">Ollama is installed. Tap a command.</div></div>')}<div class="sim-chips"><button class="schip" data-k="pull">ollama pull llama3.2</button><button class="schip" data-k="run">ollama run llama3.2</button><button class="schip" data-k="ask">Ask: What is a token?</button></div>`;
+  const hit=tasker(el,['Download the model','Start it','Turn Wi-Fi off, then ask it'],done),t=el.querySelector('[data-o="t"]'),add=h=>{t.insertAdjacentHTML('beforeend',h);t.parentElement.scrollTop=1e6};
+  el.querySelector('#wifi').onchange=e=>{net=e.target.checked;sfx('tap')};
+  el.onclick=async e=>{const b=e.target.closest('[data-k]');if(!b||busy)return;busy=true;const k=b.dataset.k;
+    if(k==='pull'){add('<div class="term">$ ollama pull llama3.2</div>');if(!net){add('<div class="sline err">Error: network unreachable. Downloading needs internet.</div>');sfx('bad')}else{const p=document.createElement('div');p.className='term out';t.append(p);for(let i=0;i<=100;i+=10){p.textContent=`pulling ${'█'.repeat(i/10)}${'░'.repeat(10-i/10)} ${i}% of 2.0 GB`;await wait(110)}add('<div class="sline okl">success</div>');pulled=true;hit(0)}}
+    if(k==='run'){add('<div class="term">$ ollama run llama3.2</div>');if(!pulled){add('<div class="sline err">Error: model not found. Pull it first.</div>');sfx('bad')}else{running=true;add('<div class="term out">&gt;&gt;&gt; Send a message (/bye to exit)</div>');sfx('ok');hit(1)}}
+    if(k==='ask'){if(!running){add('<div class="sline err">Start the model first.</div>');sfx('bad')}else{add('<div class="term">&gt;&gt;&gt; What is a token?</div>');const p=document.createElement('div');p.className='term out';t.append(p);for(const w of tokenize('A token is a small chunk of text, about 4 characters, that a model reads.')){p.textContent+=w;await wait(40)}add(net?'<div class="sline">Answered on your laptop. Now switch Wi-Fi off and ask again.</div>':'<div class="sline okl">Worked with no internet. Everything ran on your laptop.</div>');if(!net)hit(2)}}
+    busy=false};
+}
+function keyConsole(el,done){
+  let key=null,revoked=false;
+  el.innerHTML=`<div class="simgrid"><div>${simWin('Console · API keys','<div data-o="k"><span class="hint" style="margin:0">No keys yet.</span></div><div class="tools" style="margin:0"><button class="btn small" data-a="create">+ Create key</button><button class="btn small" data-a="revoke" disabled>Revoke key</button></div>')}</div><div>${simWin('Your code','<pre class="code" data-o="req"></pre><div class="tools" style="margin:0"><button class="btn primary small" data-a="send">Send request</button></div><div data-o="res"></div>')}</div></div>`;
+  const hit=tasker(el,['Send a request with no key','Create a key and send again','Revoke it and send again'],done),o=k=>el.querySelector(`[data-o="${k}"]`);
+  const req=()=>o('req').textContent=`POST /v1/messages\nx-api-key: ${key?key.slice(0,12)+'…':'(missing)'}\n\n{"model": "claude-sonnet-5-5",\n "messages": [ … ]}`;
+  el.onclick=e=>{const a=e.target.closest('[data-a]');if(!a)return;const k=a.dataset.a;
+    if(k==='create'){key='sk-sim-'+Math.random().toString(36).slice(2,10)+Math.random().toString(36).slice(2,10);revoked=false;o('k').innerHTML=`<div class="keyrow mono">${key}</div><p class="hint" style="margin:4px 0 0">Shown once. Treat it like a password.</p>`;el.querySelector('[data-a="revoke"]').disabled=false;sfx('ok');req()}
+    if(k==='revoke'){revoked=true;o('k').innerHTML=`<div class="keyrow mono" style="text-decoration:line-through">${key}</div><p class="hint" style="margin:4px 0 0">Revoked. It no longer works.</p>`;a.disabled=true;sfx('tap')}
+    if(k==='send'){const r=o('res');if(!key){r.innerHTML='<div class="sline err">401 Unauthorized · missing API key</div>';sfx('bad');hit(0)}else if(revoked){r.innerHTML='<div class="sline err">401 Unauthorized · this key was revoked</div>';sfx('bad');hit(2)}else{r.innerHTML='<div class="sline okl">200 OK · "Hello! How can I help?" · 9 in / 7 out tokens · billed to you</div>';sfx('ok');hit(1)}}};
+  req();
+}
+function leakSim(el,done){
+  let safe=false,spend=0,iv=null,leaked=false;
+  el.innerHTML=`<div class="simgrid"><div>${simWin('app.js · public repo','<pre class="code" data-o="code"></pre><div class="tools" style="margin:0"><button class="btn small" data-a="push">git push</button><button class="btn small" data-a="fix">Move key to .env</button></div><div data-o="log" style="display:grid;gap:6px"></div>')}</div><div class="insp"><p class="tag" style="margin:0">Your API bill</p><div class="big mono" data-o="usd">$0.00</div><div class="tools" style="margin:0"><button class="btn small" data-a="revoke">Revoke leaked key</button></div></div></div>`;
+  const hit=tasker(el,['Push with the key in the code','Stop the bill','Push safely using .env'],done),o=k=>el.querySelector(`[data-o="${k}"]`);
+  const code=()=>o('code').textContent=safe?'// .gitignore contains: .env\nconst KEY = process.env.API_KEY;':'const KEY = "sk-sim-7Hq2…9xL"; // hard-coded!';
+  const logl=h=>o('log').insertAdjacentHTML('beforeend',h);
+  el.onclick=async e=>{const a=e.target.closest('[data-a]');if(!a)return;const k=a.dataset.a;
+    if(k==='push'){logl('<div class="term">$ git push</div>');await wait(500);
+      if(safe){if(iv){logl('<div class="sline err">Pushed, but the leaked key still works. Revoke it!</div>');sfx('bad')}else{logl('<div class="sline okl">Secret scan: no secrets found.</div>');sfx('ok');if(leaked)hit(2)}}
+      else{logl('<div class="sline err">A bot found your key in seconds. Someone is using it.</div>');sfx('bad');mood('oops');leaked=true;clearInterval(iv);iv=setInterval(()=>{if(!el.isConnected)return clearInterval(iv);spend+=37.5;o('usd').textContent='$'+spend.toFixed(2)},200);hit(0)}}
+    if(k==='revoke'){if(!iv)return toast('Nothing is leaking yet.');clearInterval(iv);iv=null;logl('<div class="sline okl">Key revoked. The spending stopped.</div>');sfx('ok');hit(1)}
+    if(k==='fix'){safe=true;code();logl('<div class="sline">Key moved to .env, and .env is listed in .gitignore.</div>');sfx('tap')}};
+  code();
+}
+function searchSim(el,done){
+  const D=['Refund policy: refunds within 30 days of purchase.','Shipping: orders arrive in 2–5 days.','Returns: print a return label from your account.','Support hours: 9–5, Monday to Friday.'];
+  const Q={'refund':[.93,.2,.55,.1],'money back':[.88,.12,.5,.08],'when will my order arrive':[.15,.91,.3,.2]};
+  let mode='kw';
+  el.innerHTML=`<div class="tools"><div class="seg"><button class="seg-b on" data-m="kw">Keyword search</button><button class="seg-b" data-m="sem">Semantic search</button></div></div>${simWin('Help center search','<div data-o="r" style="display:grid;gap:8px"><span class="hint" style="margin:0">Pick a search below.</span></div>')}<div class="sim-chips">${Object.keys(Q).map(q=>`<button class="schip" data-q="${q}">${q}</button>`).join('')}</div>`;
+  const hit=tasker(el,['Keyword search for "money back"','Semantic search for "money back"'],done);
+  el.onclick=e=>{const m=e.target.closest('[data-m]');if(m){mode=m.dataset.m;el.querySelectorAll('[data-m]').forEach(b=>b.classList.toggle('on',b===m));sfx('tap')}
+    const b=e.target.closest('[data-q]');if(!b)return;const q=b.dataset.q,r=el.querySelector('[data-o="r"]');
+    if(mode==='kw'){const res=D.filter(d=>q.split(' ').some(w=>w.length>3&&d.toLowerCase().includes(w)));
+      r.innerHTML=`<p class="lbl" style="margin:0">Documents containing the words "${q}"</p>`+(res.length?res.map(d=>`<div class="doc">${d}</div>`).join(''):'<div class="sline err">0 results. No document has those exact words.</div>');sfx(res.length?'tap':'bad');if(q==='money back')hit(0)}
+    else{r.innerHTML=`<p class="lbl" style="margin:0">Closest in meaning to "${q}" (embedding similarity)</p>`+D.map((d,i)=>[d,Q[q][i]]).sort((a,b)=>b[1]-a[1]).map(([d,s],i)=>`<div class="doc ${i?'':'best'}"><span>${d}</span><span class="mono">${s.toFixed(2)}</span></div>`).join('');sfx('tap');if(q==='money back')hit(1)}};
+}
+const ENG={pipe:runPipe,split,knob,chat:chatSim,inbox:inboxSim,stages:trainStages,hub:modelHub,term:terminalSim,keys:keyConsole,leak:leakSim,search:searchSim};
+const sim=(t,p,aha,a={})=>({t,p,a,aha}),chat=(p,a,aha)=>({t:'chat',p,a,aha});
+const LEARN={
+ai:[
+ sim('inbox','Two spam filters. Run both and compare.','A rule only catches what someone wrote. A learned model finds the pattern, and gets better with more examples.'),
+ sim('pipe','Press Run to watch a model learn.','Normal code: people write the rules. AI: the machine finds the rules in data.',{pieces:[['Examples','10,000 emails'],['Labels','spam / not spam'],['Training','find the pattern'],['Model','sorts new emails']]})],
+tok:[
+ sim('split','Models chop text into tokens. Tap each word.','Short common words = 1 token. Long words, rare words and emoji = several.',{words:[['cat',['cat']],['playing',['play','ing']],['unbelievable',['un','believ','able']],['🍕',['<F0>','<9F>','<8D>']]]}),
+ chat('Send each message. Watch the token count and cost.',{app:'ChatBot',insp:['cost'],chips:[{id:'en',t:'How are you today?',r:()=>({t:"I'm great, thanks for asking!"})},{id:'hi',t:'आज आप कैसे हैं?',r:()=>({t:'मैं बहुत अच्छा हूँ, धन्यवाद!'})},{id:'em',t:'🍕🍕🍕🔥🔥🔥😂😂😂',r:()=>({t:'Pizza party!'})}],tasks:[['Send in English','en'],['Send in Hindi','hi'],['Send emoji','em']]},'1 token ≈ 4 English characters. Hindi and emoji use far more tokens, so they cost more.'),
+ sim('pipe','Press Run to follow your text into the model.','The model never sees letters. Only token ID numbers.',{pieces:[['"Hi there"','your text'],['Hi | there','tokens'],['13347 · 1070','token IDs'],['Model','reads numbers only']]})],
+llm:[
+ chat('Send a message. Watch the model pick each next token.',{app:'Base model playground',insp:['pred'],chips:[
+   {id:'pb',t:'Peanut butter and',r:()=>({cand:[[' jelly',[[' jelly',82],[' banana',9],[' honey',6]]],[' sandwiches',[[' sandwiches',40],[' toast',30],['.',20]]],[' are',[[' are',50],[' taste',30],[' make',15]]],[' a',[[' a',60],[' the',20],[' my',10]]],[' classic',[[' classic',55],[' favorite',35],[' treat',5]]],['.',[['.',80],['!',15],[' combo',5]]]]})},
+   {id:'sky',t:'The sky is',r:()=>({cand:[[' blue',[[' blue',70],[' clear',15],[' falling',3]]],[' today',[[' today',45],['.',40],[' and',10]]],['.',[['.',85],['!',10],[' again',5]]]]})}],
+  tasks:[['Send "Peanut butter and"','pb'],['Send "The sky is"','sky']]},'Every reply is built one token at a time, picked from a list of likely next tokens.'),
+ chat('Change the temperature and ask for the same story.',{app:'ChatBot',set:{temp:{l:'Temperature',v:'1.0',o:['0.2','1.0','1.8']}},insp:[],chips:[{id:'s',t:'Start a story about a cat',r:st=>({t:{'0.2':'Once upon a time, there was a cat.','1.0':'Every night, the cat secretly ran a tiny bakery.','1.8':'Cat. Purple moon spaghetti! The violin barked sideways.'}[st.set.temp],ev:'t'+st.set.temp})}],tasks:[['Send at 0.2','t0.2'],['Send at 1.8','t1.8'],['Send at 1.0','t1.0']]},'Low temperature = safe and predictable. High = creative, then nonsense.'),
+ chat('Ask about a book. Then give the bot a search tool and ask again.',{app:'ChatBot',set:{web:{l:'Web search tool',v:false}},insp:[],chips:[{id:'b',t:'Who wrote "The Silent Orbit" (1987)?',r:st=>st.set.web?{tools:[['web_search','"The Silent Orbit" 1987','0 results']],t:"I couldn't find any book with that title. It may not exist.",ev:'real'}:{t:'It was written by Dr. Helen Marsh, a NASA physicist, and won a Hugo Award.',ev:'fake'}}],tasks:[['Ask with search off','fake'],['Turn search on, ask again','real']]},'With no source, it invented an author. That is a hallucination. Tools and sources keep it honest.'),
+ sim('stages','Train a model stage by stage. Ask it a question after each one.','Pretraining makes an autocompleter. Fine-tuning makes an assistant. Feedback makes it helpful.')],
+par:[
+ sim('knob','This is one parameter. Train it by hand.','That is training: adjust the weights until the error is zero. Real models adjust billions.'),
+ sim('hub','Your laptop has 16 GB of memory. Try running real models.','Every parameter takes memory. Too many for your RAM and it crashes.')],
+ctx:[
+ chat('Chat with a shop bot. Watch exactly what gets sent each time.',{app:'ShopBot',sys:'You are ShopBot. Only talk about our shoe store.',insp:['ctx'],chips:[{id:'a',t:"Hi! I'm Asha.",r:()=>({t:'Hi Asha! Welcome to the shoe store.'})},{id:'b',t:'Do you sell running shoes?',r:()=>({t:'Yes! We have 12 running models.'})},{id:'c',t:"What's the weather?",r:()=>({t:'Sorry, I can only help with shoes.'})}],tasks:[['Say hi','a'],['Ask about shoes','b'],['Ask about the weather','c']]},'Every request re-sends the system prompt plus the whole chat. That bundle is the context.'),
+ sim('pipe','Press Run to build a context.','The model sees only this bundle. Nothing else.',{pieces:[['System prompt','app rules'],['Chat history','earlier messages'],['Files','docs you paste'],['Your message','the new question']]})],
+mem:[
+ chat('Test if the bot remembers you. Try it with memory off and on.',{app:'ChatBot',set:{mem:{l:'Memory',v:false}},insp:['ctx','mem'],chips:[
+   {id:'me',t:"I'm Sam, and I love cricket.",r:st=>({t:'Nice to meet you, Sam!',note:st.set.mem?'Name: Sam. Loves cricket.':null})},
+   {id:'who',t:'Who am I?',r:st=>st.msgs.slice(0,-1).some(m=>m[1].startsWith("I'm Sam"))?{t:'You are Sam!',ev:'hist'}:st.set.mem&&st.notes.length?{t:"You're Sam, and you love cricket!",ev:'mem'}:{t:"I don't know who you are.",ev:'none'}}],
+  tasks:[['Tell it, then ask (same chat)','hist'],['Memory off: new chat, ask','none'],['Memory on: tell it, new chat, ask','mem']]},'The model never remembers. Apps re-send the chat, or save notes and put them back into the context.')],
+pr:[
+ chat('Send a vague prompt, then a specific one. Then try a system prompt.',{app:'ChatBot',set:{sys:{l:'System prompt',v:'(none)',o:['(none)','Talk like a pirate','Reply in one line']}},insp:[],chips:[
+   {id:'v',t:'Tell me about dogs',r:st=>({t:{'(none)':'Dogs are domesticated mammals. They come in many breeds, sizes and colors, and have lived with humans for thousands of years…','Talk like a pirate':'Arr! Dogs be loyal crewmates, matey!','Reply in one line':'Dogs: loyal, smart, furry friends.'}[st.set.sys],ev:st.set.sys==='(none)'?'v':'sys'})},
+   {id:'s',t:'3 fun facts about dog noses for a 10-year-old, as bullets',r:st=>({t:{'(none)':'• Every dog nose print is unique, like a fingerprint.\n• Dogs smell about 10,000× better than us.\n• A wet nose helps catch smells.','Talk like a pirate':'Arr!\n• Nose prints be unique as treasure maps!\n• They sniff 10,000× better than ye!\n• Wet noses catch the sea breeze!','Reply in one line':'Unique nose prints, super smell, wet noses catch scents.'}[st.set.sys],ev:st.set.sys==='(none)'?'s':'sys'})}],
+  tasks:[['Send the vague prompt','v'],['Send the specific prompt','s'],['Pick a system prompt, then send','sys']]},'Specific prompts get specific answers. The system prompt changes every reply.')],
+loc:[
+ chat('This chat runs on a company\'s servers. Send a message, then cut the Wi-Fi.',{app:'Cloud chat',set:{net:{l:'Wi-Fi',v:true}},insp:[],chips:[{id:'q',t:'Explain AI in one line',r:st=>st.set.net?{t:'AI is software that learns patterns from data.',ev:'on'}:{t:'Network error: could not reach the server.',err:true,ev:'off'}}],tasks:[['Send with Wi-Fi on','on'],['Turn Wi-Fi off, send again','off']]},'Cloud models live on someone else\'s computers. No internet, no answer.'),
+ sim('term','This is Ollama, a real tool that runs models on your own computer. Try it.','Local models download once, then run with no internet. Your text never leaves your device.')],
+pay:[
+ chat('Use the API and watch your bill. Try to hit the rate limit.',{app:'API playground',insp:['cost'],chips:[
+   {id:'short',t:'Hi!',r:()=>({t:'Hello! How can I help?'})},
+   {id:'doc',t:'Summarize this 300-page book [attached]',in:100000,r:()=>({t:'Here is a one-paragraph summary of the book…'})},
+   {id:'long',t:'Write a 2,000-word essay',r:()=>({t:'Here is your essay… (2,700 tokens of text)',out:2700})},
+   {id:'flood',t:'Send 100 requests in 1 second',r:()=>({t:'429 Too Many Requests. Slow down and retry.',err:true,ev:'429'})}],
+  tasks:[['Send a short message','short'],['Send the big book','doc'],['Ask for a long essay','long'],['Hit the rate limit','429']]},'You pay per token, in and out. Output costs more. Too many requests at once returns error 429.')],
+key:[
+ sim('keys','This is an API console. Make your code work, then lock it out.','No key = 401 error. A key unlocks the API and bills you. A revoked key is dead.'),
+ sim('leak','Push this code to a public GitHub repo. Watch what happens.','Leaked keys get stolen in seconds. Revoke first, then keep keys in .env.')],
+rag:[
+ sim('search','A customer searches your help center. Try both search types.','Keyword search needs exact words. Embeddings find meaning, so "money back" finds "refunds".'),
+ chat('Ask the support bot. Then let it search your docs (RAG).',{app:'Support bot',set:{rag:{l:'Search company docs (RAG)',v:false}},insp:['ctx'],chips:[{id:'q',t:'What is your refund window?',r:st=>st.set.rag?{tools:[['search_docs','"refund window"','policy.pdf: Refunds within 30 days']],ctx:'Doc [policy.pdf]: Refunds within 30 days of purchase.',t:'Refunds are accepted within 30 days of purchase. (Source: policy.pdf)',ev:'rag'}:{t:'Our refund window is 90 days!',ev:'norag'}}],tasks:[['Ask without docs','norag'],['Turn on RAG, ask again','rag']]},'RAG finds the right document and puts it in the context. Real answers, with a source.')],
+agt:[
+ chat('Ask about live weather. Give the bot tools, one at a time.',{app:'Agent',set:{w:{l:'Weather tool',v:false},c:{l:'Calculator tool',v:false}},insp:[],chips:[{id:'q',t:'Weather in Paris right now, in °F?',r:st=>!st.set.w?{t:"I can't check live weather. I only know my training data.",ev:'none'}:!st.set.c?{tools:[['get_weather','city="Paris"','18 °C, cloudy']],t:"It's 18 °C and cloudy. I can't convert exactly without a calculator.",ev:'w'}:{tools:[['get_weather','city="Paris"','18 °C, cloudy'],['calculator','18*9/5+32','64.4']],t:"It's about 64 °F and cloudy in Paris.",ev:'both'}}],tasks:[['Ask with no tools','none'],['Turn on weather, ask','w'],['Turn on both tools, ask','both']]},'The model asks for tools, your app runs them, and the model uses the results. Think → act → observe.')],
+};
+
+// Incident desk + boss scenarios: a simulated screen, then actions whose outcome plays out on that screen. [label, outcome lines, best?]
+const sc=(s,app,lines,...a)=>({s,w:[app,lines],a});
+const OPS={
+ai:{inc:[
+ sc('Your rule-based spam filter missed this email.','Mail',[['sys','Rule: if subject has "FREE" → spam'],['u','"Fr3e iPh0ne, click now"'],['err','Landed in the inbox']],['Train a filter on 10,000 labeled emails',[['ok','Learned filter: spam (97% sure)'],['sys','It learned the pattern, not one word.']],1],['Add another word rule',[['err','Next week "F.R.E.E" gets through.']],0]),
+ sc('Spammers change their tricks every week.','Mail',[['sys','Accuracy dropped to 70%']],['Retrain on fresh labeled examples',[['ok','Accuracy back to 98%']],1],['Hard-code 500 more rules',[['err','Rules break the moment words change.']],0]),
+ sc('A calculator app calls itself "AI-powered".','App store',[['ai','CalcPro AI: 2 + 2 = 4']],['Check: does it learn from data?',[['ok','No. Fixed math rules. Not really AI.']],1],['Trust the label',[['err','It never learns anything.']],0]),
+ sc('Your cat/dog model is only 60% accurate.','Notebook',[['sys','Trained on 12 photos'],['err','accuracy: 60%']],['Add many more labeled photos, retrain',[['ok','accuracy: 95%']],1],['Rename the model',[['err','accuracy: 60%']],0])],
+ boss:[
+ sc('The Rulebook swapped your face unlock for rules.','Phone',[['sys','Rule: unlock if eyes are brown'],['err','Your sister unlocked your phone']],['Use a model trained on photos of your face',[['ok','Only you can unlock it now.']],1],['Add a rule: "and hair is black"',[['err','Your cousin unlocks it.']],0],['Turn the lock off',[['err','Anyone can unlock it.']],0]),
+ sc('It insists ChatGPT is "just rules".','Chat',[['ai','Rulebook: "LLMs are hand-written rules."']],['Show it: LLM ⊂ deep learning ⊂ ML ⊂ AI',[['ok','Rulebook: "…fine, it learned from data."']],1],['Agree',[['err','Wrong. LLMs are learned.']],0],['Say LLMs are outside AI',[['err','They sit inside AI.']],0]),
+ sc('It wants a spam model with zero training data.','Notebook',[['sys','examples: 0'],['err','model: random guesses']],['Collect labeled examples, then train',[['ok','The filter learns and works.']],1],['Train longer on nothing',[['err','Still random. No data, no learning.']],0],['Make the model bigger',[['err','Bigger, still clueless.']],0])]},
+tok:{inc:[
+ sc('Your Hindi support bot costs 3× the English one.','Billing',[['sys','English chat: 120 tokens'],['sys','Same chat in Hindi: 360 tokens']],['Expected: other scripts split into more tokens',[['ok','Budget for it, or pick a model with a better Hindi tokenizer.']],1],['Report a billing bug',[['err','Not a bug. Tokenizers favor English.']],0]),
+ sc('Estimate the size of a 750-word essay.','Console',[['sys','essay.txt · 750 words']],['About 1,000 tokens',[['ok','Right. 1 token ≈ ¾ of a word.']],1],['Exactly 750 tokens',[['err','Real count: about 1,000.']],0]),
+ sc('A user sent 200 emoji. The request got expensive.','Chat',[['u','😂🔥🍕😂🔥🍕😂🔥🍕…'],['sys','tokens: 600']],['Emoji cost several tokens each',[['ok','Yes, about 3 tokens each here.']],1],['Emoji are free, so it is a bug',[['err','The bill says 600 tokens.']],0]),
+ sc('The debug log shows only numbers. Is it broken?','Debug log',[['out','input_ids: [13347, 1070, 0]']],['No. Models only see token IDs',[['ok','Text → tokens → IDs is normal.']],1],['Yes. Resend as letters',[['err','It converts to IDs anyway.']],0])],
+ boss:[
+ sc('Token Muncher padded your prompt with junk.','Billing',[['err','Prompt: 4,000 tokens'],['sys','Budget: 500 tokens']],['Remove the junk words and resend',[['ok','Prompt: 40 tokens. Budget saved.']],1],['Upgrade to a bigger plan',[['err','You pay for junk tokens.']],0],['Translate it to emoji',[['err','Even more tokens.']],0]),
+ sc('It says a 1,000-word doc is 100 tokens.','Chat',[['ai','Muncher: "Only 100 tokens, trust me."']],['Correct it: about 1,300 tokens',[['ok','Muncher: "…ugh."']],1],['Believe it',[['err','Your request blows the limit.']],0],['Say exactly 1,000',[['err','Still wrong. About 1,300.']],0]),
+ sc('It fed the model raw letters.','Debug log',[['err','Error: model expects token IDs']],['Run the tokenizer first',[['ok','IDs in. Model happy.']],1],['Send the letters again',[['err','Same error.']],0],['Restart the model',[['err','Same error.']],0])]},
+llm:{inc:[
+ sc('Your code assistant gives a different answer every run.','Settings',[['sys','temperature: 1.8'],['ai','return x +* 2 // maybe?']],['Lower temperature to 0.2',[['ok','return x * 2']],1],['Raise it to 2.0',[['err','return banana * maybe']],0]),
+ sc('The bot cited a court case.','Chat',[['u','Any cases on this?'],['ai','Yes: Smith v. Moonbase (1987).']],['Check it with a search tool or source',[['ok','No such case exists. It was a hallucination.']],1],['Paste it into your report',[['err','Your report now cites a fake case.']],0]),
+ sc('Brainstorm session: every idea is the same.','Settings',[['sys','temperature: 0.1'],['ai','Idea: a cafe. Idea: a cafe. Idea: a cafe.']],['Raise temperature to 1.0',[['ok','Idea: a cat cafe on a boat!']],1],['Lower it to 0',[['err','Idea: a cafe.']],0]),
+ sc('A user thinks the bot learned from yesterday\'s chat.','Chat',[['u','You remember what I taught you, right?']],['Explain: weights are frozen while chatting',[['ok','It only knows what is in the context.']],1],['Agree that it learned',[['err','False. Chatting does not train it.']],0])],
+ boss:[
+ sc('The Hallucinator made your bot invent a refund policy.','Chat',[['u','What is your refund policy?'],['ai','90 days, no questions asked!']],['Give the bot the real policy document',[['ok','"Refunds within 30 days." (policy.pdf)']],1],['Raise the temperature',[['err','Now it says 900 days.']],0],['Tell it to sound confident',[['err','Confidently wrong.']],0]),
+ sc('It set your legal bot\'s temperature to 2.0.','Settings',[['err','temperature: 2.0'],['ai','The law is purple, probably.']],['Set temperature to 0.2',[['ok','Precise answers again.']],1],['Add more GPUs',[['err','Still purple.']],0],['Shorten the prompt',[['err','Still random.']],0]),
+ sc('It claims LLMs Google every word.','Chat',[['ai','Hallucinator: "LLMs just search Google."']],['Show it: LLMs predict the next token',[['ok','The Hallucinator fades away…']],1],['Agree',[['err','Wrong. No search without a tool.']],0],['Say they read a database',[['err','Also wrong.']],0])]},
+par:{inc:[
+ sc('Your 16 GB laptop crashes loading a 70B model.','Terminal',[['$','ollama run llama3.1:70b'],['err','Error: out of memory']],['Run an 8B model instead',[['ok','Running. 8B at 4-bit ≈ 5 GB.']],1],['Close Chrome and retry',[['err','Still out of memory. It needs ~40 GB.']],0]),
+ sc('A 14B model at 16-bit needs 28 GB. You have 16.','Terminal',[['err','needs 28 GB']],['Use the 4-bit version',[['ok','About 8 GB. It fits!']],1],['Use the 32-bit version',[['err','needs 56 GB']],0]),
+ sc('Someone says "7B" means 7 billion training words.','Chat',[['u','7B = 7 billion words, right?']],['Correct it: 7 billion parameters',[['ok','Parameters = learned numbers.']],1],['Agree',[['err','No. B = billion parameters.']],0]),
+ sc('A teammate edits the prompt to "train" the model.','Notebook',[['sys','weights changed: 0']],['Explain: training changes weights, prompts don\'t',[['ok','To change weights, you fine-tune.']],1],['Keep editing prompts',[['err','Weights still unchanged.']],0])],
+ boss:[
+ sc('Gigabyte Golem wants a 405B model on your phone.','Phone',[['err','RAM: 8 GB · needs: ~240 GB']],['Use a small 1B–3B model',[['ok','Runs smoothly.']],1],['Free up storage',[['err','RAM is the problem, not storage.']],0],['Just wait',[['err','Still crashes.']],0]),
+ sc('It says quantization makes models bigger.','Chat',[['ai','Golem: "4-bit = 4× bigger!"']],['Show it: 4-bit is ¼ the memory of 16-bit',[['ok','The Golem shrinks.']],1],['Agree',[['err','Backwards.']],0],['Say it changes nothing',[['err','It does: 4× smaller.']],0]),
+ sc('It hides where the knowledge is stored.','Files',[['sys','model.safetensors · 16 GB']],['In the weights file (parameters)',[['ok','Billions of numbers = the knowledge.']],1],['In a hidden database',[['err','There is no database inside.']],0],['On the internet',[['err','It runs offline.']],0])]},
+ctx:{inc:[
+ sc('In a very long chat, the bot forgot the user\'s name.','Chat',[['sys','context: 200K / 200K tokens'],['u','What is my name?'],['ai','I don\'t know.']],['Summarize old messages to free space',[['ok','Summary keeps "user is Asha". It remembers.']],1],['Ask again louder',[['err','Still not in the context.']],0]),
+ sc('You pasted a 500-page PDF into an 8K-token model.','Console',[['err','Error: prompt too long (300K > 8K tokens)']],['Use a long-context model or send only key parts',[['ok','Fits. Answer received.']],1],['Retry the same request',[['err','Same error.']],0]),
+ sc('The bot ignores your rule "always reply in Spanish".','Settings',[['sys','system prompt: (empty)'],['ai','Hello! How can I help?']],['Put the rule in the system prompt',[['ok','¡Hola! ¿Cómo puedo ayudar?']],1],['Hope it guesses',[['err','Hello! How can I help?']],0]),
+ sc('In a new chat, a user asks about last week\'s upload.','Chat',[['sys','new chat · no files'],['u','What did my file say?']],['Re-attach the file to this chat',[['ok','Now it is in the context.']],1],['Say it is in the training data',[['err','Uploads are not training data.']],0])],
+ boss:[
+ sc('The Overflow stuffed 100 copies of your docs in.','Console',[['err','context: 210K / 200K · request failed']],['Remove duplicates, keep one copy',[['ok','context: 2K. Works.']],1],['Add a 101st copy',[['err','Even more overflow.']],0],['Raise the temperature',[['err','Unrelated. Still failing.']],0]),
+ sc('It deleted your system prompt.','Chat',[['ai','I\'m a general assistant. Prices? No idea.']],['Restore the system prompt',[['ok','Back to your rules and prices.']],1],['Retrain the model',[['err','Overkill. Just restore the prompt.']],0],['Restart the server',[['err','Prompt still missing.']],0]),
+ sc('It says the model sees all your past chats forever.','Chat',[['ai','Overflow: "Bots see everything, always."']],['Only what is in the context window',[['ok','The Overflow drains away.']],1],['Agree',[['err','False.']],0],['Only the training data',[['err','Context is what is sent now.']],0])]},
+mem:{inc:[
+ sc('Your API bot forgets the user every message.','Console',[['sys','request 2 · messages: ["Who am I?"]'],['ai','I don\'t know.']],['Send the chat history with each request',[['ok','"You\'re Sam."']],1],['Use a bigger model',[['err','Still forgets. No history was sent.']],0]),
+ sc('Users want the bot to remember them next week.','App',[['sys','every visit starts a new chat']],['Save memory notes, add them to the context',[['ok','"Welcome back, Sam!"']],1],['Ask the model to try harder',[['err','It has no memory itself.']],0]),
+ sc('Long chats are getting expensive.','Billing',[['sys','turn 1: 50 tokens · turn 40: 12,000 tokens']],['Summarize older history',[['ok','turn 40: 1,500 tokens']],1],['Ignore it',[['err','Cost grows every turn.']],0]),
+ sc('The bot doesn\'t know last month\'s news.','Chat',[['u','Who won last month?'],['ai','I don\'t have that information.']],['Training cutoff: add a search tool',[['ok','Found it with search.']],1],['Assume the bot is broken',[['err','It just has a cutoff date.']],0])],
+ boss:[
+ sc('The Forgetter turned off chat history.','Chat',[['u','I\'m vegan.'],['u','Suggest dinner.'],['ai','Try a steak!']],['Turn history back on',[['ok','Try a lentil curry!']],1],['Upgrade the model',[['err','Still steak.']],0],['Lower the temperature',[['err','Predictable steak.']],0]),
+ sc('It says memory means retraining every night.','Chat',[['ai','Forgetter: "Bots retrain on you nightly."']],['Memory = saved notes put into the context',[['ok','The Forgetter forgets its own lie.']],1],['Agree',[['err','No retraining happens.']],0],['Memory lives in the GPU',[['err','Nope.']],0]),
+ sc('It wiped the saved notes.','App',[['err','memory: (empty)'],['ai','Hi! Who are you?']],['Restore the notes and add them to the context',[['ok','Hi Sam!']],1],['Tell the model to remember harder',[['err','It can\'t.']],0],['Use a bigger context window',[['err','Notes are still gone.']],0])]},
+pr:{inc:[
+ sc('Prompt: "write something". The output is useless.','Chat',[['u','write something'],['ai','Here is something.']],['Add the task, audience and format',[['ok','5 birthday party ideas for a 7-year-old, as bullets.']],1],['Add "PLEASE!!!"',[['err','Here is something!!!']],0]),
+ sc('You need a table but get paragraphs.','Chat',[['ai','On Monday you can run. On Tuesday…']],['Add: "Format as a table: day | workout"',[['ok','A neat day | workout table appears.']],1],['Ask it to be "better"',[['err','More paragraphs.']],0]),
+ sc('Answers are too advanced for kids.','Chat',[['ai','Photosynthesis is a photochemical redox process…']],['Add: "Explain to a 7-year-old"',[['ok','Plants eat sunlight to make food!']],1],['Use a bigger model',[['err','Still too complex.']],0]),
+ sc('The bot must always act as your shop\'s support agent.','Settings',[['sys','system prompt: (empty)']],['Write it in the system prompt',[['ok','Applies to every chat.']],1],['Ask users to type it each time',[['err','Users forget. Inconsistent.']],0])],
+ boss:[
+ sc('The Vague Blob rewrote your prompt to "do the thing".','Chat',[['u','do the thing'],['ai','Which thing?']],['Rewrite it with role, context, task, format',[['ok','A precise, useful answer.']],1],['Add emojis',[['err','Which thing?']],0],['Send it again',[['err','Which thing?']],0]),
+ sc('It removed the example from your prompt.','Chat',[['ai','Outputs come back in random styles']],['Add an example of the output you want',[['ok','Matches your style.']],1],['Raise the temperature',[['err','Even more random.']],0],['Shorten the prompt',[['err','Still random.']],0]),
+ sc('A pharmacy bot\'s only system prompt is "be helpful".','Settings',[['err','system: be helpful'],['ai','Sure, take 10 pills!']],['Add constraints: safety rules, refer to a pharmacist',[['ok','Please ask a pharmacist about dosage.']],1],['Leave it',[['err','Dangerous answers.']],0],['Make it shorter',[['err','Still unsafe.']],0])]},
+loc:{inc:[
+ sc('On a flight with no Wi-Fi, you need coding help.','Laptop',[['err','Cloud chat: network error']],['Run a local model with Ollama',[['ok','Answer generated offline.']],1],['Keep retrying the cloud',[['err','Still no internet.']],0]),
+ sc('Hospital data must never leave the building.','Clinic',[['sys','patient_notes.txt']],['Use a local model on hospital servers',[['ok','The data stays inside.']],1],['Paste it into a public chatbot',[['err','Privacy breach.']],0]),
+ sc('Your 8 GB laptop gives weak answers. You need top quality.','Laptop',[['err','local 1B model: weak answer']],['Use a cloud model',[['ok','Frontier-quality answer.']],1],['Load a 70B model locally',[['err','Out of memory.']],0]),
+ sc('You want to try Llama on your own PC.','Terminal',[['$','_']],['ollama run llama3.2',[['out','pulling… done'],['ok','>>> ready, running locally']],1],['Open a cloud chat website',[['err','That runs on someone else\'s servers.']],0])],
+ boss:[
+ sc('Cloud Titan cut your office internet.','Office',[['err','All cloud AI tools: offline']],['Switch to the local model',[['ok','Work continues.']],1],['Wait for the Titan',[['err','Still down.']],0],['Buy more cloud credits',[['err','You still need internet.']],0]),
+ sc('It says local models need the internet.','Chat',[['ai','Titan: "No Wi-Fi, no AI!"']],['Run a local model offline in front of it',[['ok','The Titan shrinks.']],1],['Agree',[['err','False.']],0],['Say only on weekdays',[['err','Not a thing.']],0]),
+ sc('It wants to send secret contracts to an unknown cloud API.','Legal',[['sys','contracts.pdf · confidential']],['Use a local model or an approved provider',[['ok','Secrets stay safe.']],1],['Send them anyway',[['err','Data leaves your control.']],0],['Email them to the Titan',[['err','Definitely not.']],0])]},
+pay:{inc:[
+ sc('You chat all day. The API bill is $80 a month.','Billing',[['err','API: $80 this month'],['sys','Chat subscription: $20 a month']],['Use the subscription for chatting',[['ok','$20 flat.']],1],['Keep chatting through the API',[['err','$80 again next month.']],0]),
+ sc('Your app must call AI 10,000 times a day.','App',[['sys','10,000 requests per day']],['Use the API, billed per token',[['ok','Your code can call it.']],1],['Share one chat subscription',[['err','Not for apps. Against the terms.']],0]),
+ sc('Requests suddenly fail.','Console',[['err','429 Too Many Requests']],['Wait, then retry slower',[['ok','200 OK']],1],['Send even faster',[['err','More 429s.']],0]),
+ sc('Most of the bill is output tokens.','Billing',[['sys','input $2 · output $14']],['Ask for shorter answers, set max_tokens',[['ok','output $4']],1],['Send shorter questions',[['err','Barely helps. Output is the cost.']],0])],
+ boss:[
+ sc('The Bill Collector removed max_tokens.','Billing',[['err','output: 10,000 tokens per reply']],['Set max_tokens to 500',[['ok','Cost down 95%.']],1],['Pay it',[['err','Wallet hurts.']],0],['Lower the temperature',[['err','Still long.']],0]),
+ sc('It sends a 50-page manual with every message.','Billing',[['err','input: 40,000 tokens × 1,000 messages']],['Send only the relevant pages (RAG)',[['ok','input: 800 tokens per message']],1],['Send it twice',[['err','Double the cost.']],0],['Convert it to emoji',[['err','Even more tokens.']],0]),
+ sc('It fires 1,000 requests per second.','Console',[['err','429 · 429 · 429 · 429']],['Add rate limiting and retries',[['ok','Steady 200 OK.']],1],['Add more requests',[['err','More 429s.']],0],['Change the model name',[['err','Still rate-limited.']],0])]},
+key:{inc:[
+ sc('GitHub alert: your API key is in a public repo.','GitHub',[['err','Secret detected: sk-ant-…']],['Revoke it now, make a new one',[['ok','Old key dead. Bill safe.']],1],['Only delete the commit',[['err','Bots already copied it.']],0]),
+ sc('Your request returns an error.','Console',[['err','401 · invalid x-api-key']],['Check the key in the request header',[['ok','200 OK']],1],['Switch to another model',[['err','Still 401.']],0]),
+ sc('A teammate put the key in the website\'s JavaScript.','app.js',[['err','const KEY = "sk-…" // runs in the browser']],['Move it to the server. Browser calls your server',[['ok','Key hidden from users.']],1],['Minify the JavaScript',[['err','Still readable in DevTools.']],0]),
+ sc('You are starting a new project.','Code',[['sys','Where should the key go?']],['.env file, with .env in .gitignore',[['ok','Safe on your machine.']],1],['README.md',[['err','Public for everyone.']],0])],
+ boss:[
+ sc('The Key Thief stole your key. Usage is spiking.','Billing',[['err','$0 → $900 in an hour']],['Revoke the key, set a spending limit',[['ok','The spike stops.']],1],['Change your email password',[['err','The key still works.']],0],['Wait and see',[['err','$2,000.']],0]),
+ sc('It posted your key in a public Discord.','Discord',[['err','#help: my key is sk-ant-…']],['Rotate the key',[['ok','The leaked key is useless.']],1],['Delete the message',[['err','Already copied.']],0],['Ask people not to use it',[['err','They will.']],0]),
+ sc('It deleted your .gitignore.','Git',[['err','staged: .env']],['Restore .gitignore, unstage .env',[['ok','Secrets stay local.']],1],['Commit anyway',[['err','The key goes public.']],0],['Rename .env to env.txt',[['err','Still committed.']],0])]},
+rag:{inc:[
+ sc('A search for "money back" finds nothing.','Help center',[['u','money back'],['err','0 results (keyword search)']],['Switch to semantic (embedding) search',[['ok','Found: Refund policy (0.91)']],1],['Add more keywords',[['err','Still misses synonyms.']],0]),
+ sc('Your support bot invents policies.','Chat',[['ai','Refunds within 90 days!']],['Turn on RAG over your policy docs',[['ok','Within 30 days. (policy.pdf)']],1],['Fine-tune for a week',[['err','Slow, and docs change.']],0]),
+ sc('Docs changed today. The bot uses the old info.','Chat',[['ai','Shipping takes 5 days.'],['sys','new doc: shipping takes 2 days']],['Re-index the new docs',[['ok','Shipping takes 2 days.']],1],['Retrain the model',[['err','Not needed. RAG reads docs live.']],0]),
+ sc('Which word sits closest to "puppy"?','Embeddings',[['sys','puppy · ?']],['dog',[['ok','similarity 0.89']],1],['bus',[['err','similarity 0.12']],0])],
+ boss:[
+ sc('The Lost Librarian scrambled your index.','Help center',[['u','refund?'],['err','Top result: Shipping times (0.31)']],['Re-embed the docs and search again',[['ok','Top result: Refund policy (0.92)']],1],['Ask the user to rephrase',[['err','Still the wrong docs.']],0],['Raise the temperature',[['err','Unrelated.']],0]),
+ sc('It strips sources from answers.','Chat',[['ai','30 days.']],['Return the source document with the answer',[['ok','30 days. (policy.pdf, page 2)']],1],['Remove the docs',[['err','Now it guesses.']],0],['Just trust it',[['err','Users can\'t check it.']],0]),
+ sc('It says RAG means retraining.','Chat',[['ai','Librarian: "RAG = retrain daily!"']],['RAG fetches docs into the context',[['ok','The Librarian finds the right shelf.']],1],['Agree',[['err','No retraining.']],0],['RAG = a bigger model',[['err','No.']],0])]},
+agt:{inc:[
+ sc('The bot can\'t answer "weather in Tokyo now".','Chat',[['ai','I can\'t check live weather.']],['Give it a get_weather tool',[['tool','get_weather("Tokyo") → 22 °C'],['ok','22 °C and sunny.']],1],['Lower the temperature',[['err','Still no live data.']],0]),
+ sc('The model asked for a tool call. Nothing happens.','Console',[['tool','calculator("18*9/5+32")'],['err','(waiting…)']],['Your app runs it and returns the result',[['ok','→ 64.4 · answer sent']],1],['Wait for the model to run it',[['err','The model can\'t run code itself.']],0]),
+ sc('The agent stops after the first tool result.','Agent log',[['tool','search("flights")'],['out','3 results'],['err','(stopped)']],['Feed the result back so it keeps looping',[['ok','Think → act → observe → answer.']],1],['Remove its tools',[['err','Now it can do nothing.']],0]),
+ sc('You want one tool to work in many AI apps.','Code',[['sys','my_database_tool']],['Expose it as an MCP server',[['ok','Works in any MCP app.']],1],['Rewrite it for every app',[['err','Lots of duplicate work.']],0])],
+ boss:[
+ sc('The Rogue Agent deleted files with unlimited tools.','Agent log',[['tool','delete_all("/")'],['err','files removed']],['Limit tools, require approval for risky ones',[['ok','Deleting now needs your OK.']],1],['Give it even more tools',[['err','More damage.']],0],['Raise the temperature',[['err','Wilder.']],0]),
+ sc('It loops forever calling search.','Agent log',[['tool','search()'],['tool','search()'],['tool','search() …']],['Add a max-steps limit',[['ok','Stops after 10 steps with an answer.']],1],['Wait',[['err','Still looping. The bill grows.']],0],['Remove the loop entirely',[['err','Then it is not an agent.']],0]),
+ sc('It claims the model runs tools by itself.','Chat',[['ai','Rogue: "I run code inside my weights!"']],['The app runs tools and returns results',[['ok','The Rogue Agent shuts down.']],1],['Agree',[['err','False.']],0],['Tools run in the tokenizer',[['err','No.']],0])]},
+};
+
+/* ================= levels: missions [objective, widget, unlocked fact, hint], rapid [statement, true?, why], boss [q, options, answer, why] ================= */
+const LV=[
+{id:'ai',name:'What is AI?',boss:'The Rulebook',col:'--dog',
+ missions:[["Sort all 8: does it learn, or follow fixed rules?",sorter([['Calculator adding 2 + 2',1,'Fixed math rules.'],['Gmail spam filter',0,'Learned from millions of marked emails.'],['Face unlock on your phone',0,'Learned your face from examples.'],['Thermostat: heat on below 20 °C',1,'One rule a person wrote.'],['Netflix "Because you watched…"',0,'Learns from what people watch.'],['Excel SUM formula',1,'A plain formula.'],['Voice typing',0,'Learned from recordings.'],['Claude or ChatGPT',0,'Large language models.']],['AI','Not AI']),'AI learns its rules from examples. Normal code follows rules people wrote.'],
+  ["Add 2 cats + 2 dogs of your own, then train to 100% accuracy.",learn,'Training = nudging numbers (parameters) until guesses match the examples.','Put cats top-left and dogs bottom-right.'],
+  ["Find all 4 layers of the AI family.",nested,'LLMs sit inside deep learning, inside machine learning, inside AI.']],
+ cards:[['AI','Machines doing tasks that need human-like thinking'],['Machine learning','Learning rules from data'],['Training','Adjusting the model until guesses match examples']]},
+{id:'tok',name:'Tokens',boss:'Token Muncher',col:'--cat',
+ missions:[["Write text under 25 characters that costs 15+ tokens.",tokenizerW,'1 token ≈ 4 English characters. Other scripts and emoji cost far more.','English is cheap. Try the other samples.']],
+ cards:[['Token','A chunk of text, about 4 characters'],['Token ID','The number the model actually sees'],['Tokenizer','Splits text into tokens']]},
+{id:'llm',name:'Large Language Models',boss:'The Hallucinator',col:'--pink',
+ missions:[["Finish the sentence, letting the model pick at least once at temperature 1.5+.",nextTok,'An LLM predicts one token at a time. Temperature controls how random the pick is.','Drag temperature right, then press Let the model pick.'],
+  ["Unlock all 4 stages of how an LLM is made.",pipeline,'Pretrain → fine-tune → feedback → frozen for chatting.']],
+ cards:[['LLM','A huge next-token predictor'],['Temperature','How random token picks are'],['Hallucination','Confident, plausible, wrong'],['Inference','Using a trained model. No learning.']]},
+{id:'par',name:'Parameters',boss:'Gigabyte Golem',col:'--teal',
+ missions:[["Push the pass chance above 90%, then below 10%.",neuron,'Weights and bias are parameters. Training finds them for you, billions at once.','A negative bias pulls the chance down.'],
+  ["Find the biggest model that fits a 16 GB laptop.",modelSize,'Memory ≈ parameters × bytes per weight. 4-bit uses half a byte each.','Lower precision shrinks memory.']],
+ cards:[['Parameter','One learned number in the model'],['7B','7 billion parameters'],['Quantization','Fewer bits per weight to save memory']]},
+{id:'ctx',name:'Context window',boss:'The Overflow',col:'--hi',
+ missions:[["Make the AI forget your name, then ask it.",ctxWin,'When the context overflows, the oldest messages get dropped.','Paste documents until it overflows.'],
+  ["Slide to the 1M-token window. How many novels fit?",ctxSizes,'1,000 tokens ≈ 750 words.']],
+ cards:[['Context','Everything sent with this request'],['Context window','Max tokens the model can see at once'],['System prompt','Hidden instructions from the app builder']]},
+{id:'mem',name:'Memory',boss:'The Forgetter',col:'--t4',
+ missions:[["Try all 3 app designs. Which remembers you tomorrow?",memModes,'The model has no memory. Apps re-send history or saved notes into the context.']],
+ cards:[['Short-term memory','The context window'],['Long-term memory','Saved notes re-inserted by the app'],['Knowledge cutoff','The date training data ends']]},
+{id:'pr',name:'Prompting',boss:'The Vague Blob',col:'--t5',
+ missions:[["Unlock the Precise answer.",promptBuilder,'Role + context + task + format + constraints = sharp answers.','Turn on 5 ingredients.']],
+ cards:[['Role','Who the model acts as'],['Format','Shape of the answer'],['Constraints','Limits and must-nots']]},
+{id:'loc',name:'Online vs offline',boss:'Cloud Titan',col:'--accent',
+ missions:[["Get an AI reply with the internet OFF.",cloudLocal,'Local models run on your device. Cloud models need the internet.','Switch to the local model.'],
+  ["Pick cloud or local for 6 situations.",sorter([['Hospital notes. Data must never leave the building.',1,'Local keeps data on your machines.'],['You need the strongest model for hard reasoning.',0,'Frontier models run in the cloud.'],['Coding on a flight with no Wi-Fi.',1,'Local works offline.'],['Old laptop with 8 GB RAM, want top quality.',0,'Too small for big local models.'],['App for 1 million users, no GPUs owned.',0,'Cloud scales for you.'],['Experimenting all day with no bills.',1,'Local runs are free after hardware.']],['Cloud','Local']),'Cloud: strongest and scales. Local: private, offline, free after hardware.']],
+ cards:[['Cloud model','Runs on provider servers'],['Local model','Runs on your device, offline'],['Open weights','Model files you can download']]},
+{id:'pay',name:'Subscription vs API',boss:'The Bill Collector',col:'--good',
+ missions:[["Find a usage where the API costs more than the $20 subscription.",costCalc,'API cost = tokens × price. Heavy use can beat a flat fee.','Max out messages per day.']],
+ cards:[['Subscription','Flat fee for a chat app'],['API','Pay-per-token for your code'],['Rate limit','Max requests per minute']]},
+{id:'key',name:'API keys',boss:'The Key Thief',col:'--bad',
+ missions:[["Inspect all 6 parts of the request, then send it.",apiAnatomy,'A request = endpoint + key + model + max_tokens + messages.'],
+  ["Safe or leaked? Sort all 6 hiding spots.",sorter([['.env file listed in .gitignore',0,'Stays out of version control.'],['Hard-coded in front-end JavaScript',1,'Anyone can read it in DevTools.'],['Committed to a public GitHub repo',1,'Bots find keys in minutes.'],['Environment variable on your server',0,'The standard way.'],['Pasted in Discord for help',1,'Now it is public. Rotate it.'],['A secrets manager like Vault',0,'Built for this.']],['Safe','Leaked']),'Keep keys on the server. Leaked? Revoke and rotate right away.']],
+ cards:[['API key','Secret that authenticates and bills'],['.env file','Local secrets, kept out of git'],['Rotate','New key, old one disabled']]},
+{id:'rag',name:'Embeddings & RAG',boss:'The Lost Librarian',col:'--t3',
+ missions:[["Explore 3 words on the meaning map.",meaningMap,'Embeddings turn meaning into numbers. Similar meanings sit close together.'],
+  ["Run a question through all 5 RAG stages.",ragFlow,'RAG: search your docs, add the best match to the context, then answer.']],
+ cards:[['Embedding','Text as a meaning vector'],['Vector database','Fast search over embeddings'],['RAG','Search first, then answer']]},
+{id:'agt',name:'Agents & tools',boss:'The Rogue Agent',col:'--dog',
+ missions:[["Run the agent until it answers the task.",agentLoop,'Agent = LLM + tools + a think → act → observe loop.']],
+ cards:[['Tool','A function the model can ask to run'],['Agent','An LLM in a loop with tools'],['MCP','Standard plug for AI tools']]},
+];
+LV.push({id:'final',final:true,name:'Final boss',boss:'The Singularity',col:'--hi',missions:[],cards:[]});
+LV.forEach((l,i)=>{l.shape=i%4;l.learn=LEARN[l.id]||[];if(OPS[l.id]){l.inc=OPS[l.id].inc;l.bossOps=OPS[l.id].boss}});
+LV.at(-1).bossOps=LV.slice(0,-1).map(l=>l.bossOps.at(-1));
+
+/* ================= state + HUD ================= */
+const KEY='ai-quest.v1';
+let S={xp:0,stars:{},sound:true,name:''};
+try{Object.assign(S,JSON.parse(localStorage.getItem(KEY))||{})}catch(e){}
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}};
+const scr=$('#screen');let R=null,keyH=null;
+function hud(){$('#lvl').textContent=Math.floor(S.xp/100)+1;$('#xp').textContent=S.xp+' XP';$('#xpfill').style.width=S.xp%100+'%';$('#stars').textContent=Object.values(S.stars).reduce((a,b)=>a+b,0);const s=$('#snd');s.textContent=S.sound?'Sound on':'Sound off';s.setAttribute('aria-pressed',S.sound)}
+function xp(n){const lv=Math.floor(S.xp/100);S.xp+=n;save();hud();const r=$('#xp').getBoundingClientRect(),f=document.createElement('span');f.className='xpfloat';f.textContent='+'+n+' XP';f.style.left=r.left+'px';f.style.top=r.bottom+6+'px';document.body.append(f);setTimeout(()=>f.remove(),1200);
+  if(Math.floor(S.xp/100)>lv){toast(`Level up! You are now level ${Math.floor(S.xp/100)+1}.`);sfx('lvl')}}
+function toast(t){document.querySelectorAll('.toast').forEach(x=>x.remove());const d=document.createElement('div');d.className='toast';d.setAttribute('role','status');d.textContent=t;document.body.append(d);setTimeout(()=>d.remove(),2800)}
+function go(html){keyH=null;scr.innerHTML=`<div class="scr">${html}</div>`;scrollTo({top:0})}
+function confetti(){if(RM)return;const c=document.createElement('canvas');c.className='confetti';document.body.append(c);const d=devicePixelRatio||1,W=innerWidth,H=innerHeight;c.width=W*d;c.height=H*d;const x=c.getContext('2d');x.scale(d,d);
+  const cols=['--accent','--hi','--good','--cat','--pink'].map(css),ps=Array.from({length:160},()=>({x:W/2,y:H/3,vx:(Math.random()-.5)*15,vy:-Math.random()*13-3,r:Math.random()*7+4,c:cols[Math.random()*cols.length|0],a:Math.random()*6}));let t=0;
+  (function f(){x.clearRect(0,0,W,H);for(const p of ps){p.vy+=.35;p.vx*=.99;p.x+=p.vx;p.y+=p.vy;p.a+=.2;x.save();x.translate(p.x,p.y);x.rotate(p.a);x.fillStyle=p.c;x.fillRect(-p.r/2,-p.r/4,p.r,p.r/2);x.restore()}if(++t<120)requestAnimationFrame(f);else c.remove()})()}
+addEventListener('keydown',e=>{if(/INPUT|TEXTAREA|SELECT/.test(e.target.tagName))return;keyH&&keyH(e)});
+
+/* ================= world map ================= */
+const unlocked=i=>i===0||(LV[i].final?LV.slice(0,-1).every(l=>S.stars[l.id]):!!S.stars[LV[i-1].id]);
+function showMap(){
+  R=null;const cur=LV.findIndex((l,i)=>unlocked(i)&&!S.stars[l.id]),gap=118,top=70;
+  const pts=LV.map((_,i)=>[50+28*Math.sin(i*1.15),top+i*gap]),H=top+(LV.length-1)*gap+90;
+  const path=ps=>ps.map(([x,y],i)=>i?`C${ps[i-1][0]} ${ps[i-1][1]+gap/2} ${x} ${y-gap/2} ${x} ${y}`:`M${x} ${y}`).join(' ');
+  const reach=cur<0?LV.length:cur+1,cleared=LV.filter(l=>S.stars[l.id]&&!l.final).length;
+  go(`<div class="maphead"><div><p class="tag">World map</p><h1>AI Quest</h1></div><span class="pill">${cleared} / ${LV.length-1} levels cleared</span></div>
+  <div class="world" style="height:${H}px"><svg class="trail" viewBox="0 0 100 ${H}" preserveAspectRatio="none" aria-hidden="true"><path class="p0" d="${path(pts)}"/><path class="p1" d="${path(pts.slice(0,reach))}"/></svg>
+  ${LV.map((l,i)=>{const[x,y]=pts[i],u=unlocked(i),st=S.stars[l.id]||0,cls=[l.final?'final':'',!u?'locked':st?'cleared':'',i===cur?'cur':''].join(' ');
+    return `<button class="node ${cls}" style="left:${x}%;top:${y}px" data-i="${i}" ${u?'':'disabled'} aria-label="${l.name}${u?'':' (locked)'}">${u?(l.final?'★':i+1):'<svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M7 10V7a5 5 0 0110 0v3h1a1 1 0 011 1v10a1 1 0 01-1 1H6a1 1 0 01-1-1V11a1 1 0 011-1h1zm2 0h6V7a3 3 0 00-6 0v3z"/></svg>'}</button>
+    <div class="nlabel ${x<50?'r':'l'}" style="left:${x}%;top:${y}px"><b>${l.name}</b><small>Boss: ${l.boss}</small>${l.final?'':`<div class="nstars">${[0,1,2].map(k=>`<span class="${k<st?'':'off'}">★</span>`).join('')}</div>`}</div>`}).join('')}
+  ${cur>=0?`<div class="me" style="left:${pts[cur][0]}%;top:${pts[cur][1]-92}px">${BOT}</div>`:''}</div>
+  <div class="actbar"><button class="btn ghost small" id="resetAll">Reset progress</button>${cur>=0?`<button class="btn primary go" data-i="${cur}">Play level ${LV[cur].final?'★':cur+1}</button>`:'<span class="pill">All clear!</span>'}</div>`);
+  scr.onclick=e=>{const n=e.target.closest('[data-i]');if(n&&!n.disabled){sfx('tap');brief(+n.dataset.i)}};
+  let armed=false;$('#resetAll').onclick=e=>{e.stopPropagation();if(!armed){armed=true;e.target.textContent='Tap again to erase everything';setTimeout(()=>{armed=false;if(e.target.isConnected)e.target.textContent='Reset progress'},3000);return}S={xp:0,stars:{},sound:S.sound,name:''};save();hud();showMap()};
+  if(cur>0){const n=$(`.node[data-i="${cur}"]`);n&&n.scrollIntoView({block:'center',behavior:RM?'auto':'smooth'})}
+}
+
+function brief(i){
+  const L=LV[i],st=S.stars[L.id]||0;
+  go(`<div class="card brief"><p class="tag">${L.final?'Final level':'Level '+(i+1)}</p><h2 style="font-size:clamp(1.6rem,4.5vw,2.3rem)">${L.name}</h2>${bossSVG(L.col,L.shape)}<p style="margin:0">Defeat <b>${L.boss}</b></p>
+    <div class="chips">${L.learn.length?`<span class="chip">${L.learn.length} quick lessons</span>`:''}${L.missions.length?`<span class="chip">${L.missions.length} mission${L.missions.length>1?'s':''}</span><span class="chip">Incident desk</span>`:''}<span class="chip">Boss · ${L.bossOps.length} attacks · 3 hearts</span></div>
+    ${st?`<div class="nstars">${[0,1,2].map(k=>`<span class="${k<st?'':'off'}">★</span>`).join('')}</div>`:''}</div>
+    <div class="actbar"><button class="btn ghost" data-map>Map</button><button class="btn primary go" data-start>Start</button></div>`);
+  scr.onclick=e=>{if(e.target.closest('[data-map]'))showMap();if(e.target.closest('[data-start]')){sfx('ok');start(i)}};
+}
+
+/* ================= level run ================= */
+function start(i){const L=LV[i];R={L,i,hearts:3,xp0:S.xp,ph:[...L.learn.map((_,k)=>['l',k]),...L.missions.map((_,k)=>['m',k]),...(L.inc?[['r']]:[]),['b']],p:0};phase()}
+const lvTop=()=>`<div class="lvtop"><button class="btn ghost small" data-quit aria-label="Quit to map">✕</button><div class="phases">${R.ph.map((_,k)=>`<i class="${k<R.p?'done':k===R.p?'cur':''}"></i>`).join('')}</div><span class="tag" style="margin:0">${R.L.final?'Final':'Lv '+(R.i+1)}</span></div>`;
+function phase(){const[t,k]=R.ph[R.p];scr.onclick=e=>{if(e.target.closest('[data-quit]'))showMap()};(t==='l'?lesson:t==='m'?mission:t==='r'?rapid:boss)(k)}
+
+function lesson(k){
+  const s=R.L.learn[k],last=k===R.L.learn.length-1;
+  go(lvTop()+`<div class="obj">${BOT}<div><span class="tag">Learn · ${k+1} of ${R.L.learn.length}</span><b>${s.p}</b></div></div><div class="card" data-w></div><div data-intel></div><div class="actbar"><span></span><button class="btn primary" data-next disabled>Try it first</button></div>`);
+  const nb=$('[data-next]');let d=false;
+  ENG[s.t]($('[data-w]'),()=>{if(d)return;d=true;$('[data-intel]').innerHTML=`<div class="intel"><span class="gem"><span>!</span></span><div><span class="tag">Key idea</span><br>${s.aha}</div></div>`;
+    nb.disabled=false;nb.textContent=last?'Start the missions':'Next';nb.classList.add('go');xp(5)},s.a);
+  nb.onclick=()=>{if(last)toast('Now use what you learned!');nextPhase()};
+}
+function nextPhase(){R.p++;phase()}
+
+function mission(k){
+  const[obj,w,intel,hint]=R.L.missions[k];
+  go(lvTop()+`<div class="obj">${BOT}<div><span class="tag">Mission ${k+1} of ${R.L.missions.length}</span><b>${obj}</b></div><span class="check" aria-hidden="true"></span></div><div class="card" data-w></div><div data-intel></div>
+  <div class="actbar">${hint?'<button class="btn ghost" data-hint>Hint</button>':'<span></span>'}<button class="btn primary" data-next disabled>Complete the mission</button></div>`);
+  const nb=$('[data-next]');let done=false;
+  w($('[data-w]'),()=>{if(done)return;done=true;$('.obj').classList.add('done');$('.check').textContent='✓';$('[data-intel]').innerHTML=`<div class="intel"><span class="gem"><span>!</span></span><div><span class="tag">Unlocked</span><br>${intel}</div></div>`;
+    nb.disabled=false;nb.textContent='Continue';nb.classList.add('go');xp(20);sfx('win');mood('happy')});
+  nb.onclick=()=>nextPhase();
+  if(hint)$('[data-hint]').onclick=()=>toast(hint);
+}
+
+const opView=(o,ord)=>`<p class="q" style="margin-bottom:10px">${o.s}</p>${simWin(o.w[0],simLines(o.w[1]),'opwin')}<div class="opts" style="margin-top:12px">${ord.map((k,n)=>`<button class="opt" data-a="${k}"><span class="L">${n+1}</span><span>${o.a[k][0]}</span></button>`).join('')}</div>`;
+// Plays the chosen action's outcome on the sim screen; a wrong pick also plays the better move. Returns true if best.
+function playOp(root,o,k){
+  const g=o.a.findIndex(a=>a[2]),body=root.querySelector('.opwin .sim-body');root.querySelectorAll('.opt').forEach(b=>b.disabled=true);
+  if(k>=0){root.querySelector(`.opt[data-a="${k}"]`).classList.add(k===g?'right':'wrong');body.insertAdjacentHTML('beforeend',`<div class="outcome">${simLines(o.a[k][1])}</div>`)}
+  if(k!==g){root.querySelector(`.opt[data-a="${g}"]`).classList.add('right');body.insertAdjacentHTML('beforeend',`<div class="outcome"><div class="sline">Better move: <b>${o.a[g][0]}</b></div>${simLines(o.a[g][1])}</div>`)}
+  body.scrollTop=body.scrollHeight;return k===g;
+}
+
+function rapid(){
+  const items=shuffle([...R.L.inc]),TL=20000;let i=0,ok=0,combo=0,best=0,earned=0,raf,t0,locked=true,ord;
+  go(lvTop()+`<div class="rf"><div class="rf-top"><span class="tag" style="margin:0">Incident desk · fix it fast</span><span class="mono" data-o="n"></span><span class="combo" data-o="c"></span></div><div class="timer"><i></i></div><div class="card" data-o="card"></div><div class="actbar"><span class="fb" data-o="fb" style="text-align:left;min-height:0"></span><button class="btn primary go" data-go hidden>Next incident</button></div></div>`);
+  const o=k=>$(`[data-o="${k}"]`),bar=$('.timer i'),nx=$('[data-go]');
+  function show(){if(i>=items.length)return end();locked=false;ord=shuffle(items[i].a.map((_,k)=>k));o('card').innerHTML=`<div class="scr">${opView(items[i],ord)}</div>`;o('n').textContent=`${i+1} / ${items.length}`;o('fb').className='fb';o('fb').textContent='Pick the best action.';nx.hidden=true;t0=performance.now();raf=requestAnimationFrame(tick)}
+  function tick(t){if(!bar.isConnected)return;const k=Math.max(0,1-(t-t0)/TL);bar.style.width=k*100+'%';bar.classList.toggle('low',k<.3);if(k<=0)answer(-1);else raf=requestAnimationFrame(tick)}
+  function answer(k){if(locked)return;locked=true;cancelAnimationFrame(raf);const right=playOp(o('card'),items[i],k);
+    if(right){ok++;combo++;best=Math.max(best,combo);const g=5*Math.min(combo,5);earned+=g;S.xp+=g;save();hud();sfx('ok');mood('happy')}else{combo=0;sfx('bad')}
+    o('fb').className='fb '+(right?'ok':'no');o('fb').textContent=right?'Fixed!':k<0?'Time up!':'That made it worse.';
+    const cb=o('c');cb.textContent=combo>1?`x${combo} combo`:'';cb.classList.remove('bump');void cb.offsetWidth;if(combo>1)cb.classList.add('bump');nx.hidden=false}
+  function end(){keyH=null;go(lvTop()+`<div class="card results"><p class="tag">Incident desk closed</p><div class="big">${ok} / ${items.length}</div><div class="chips"><span class="chip">Best combo x${best}</span><span class="chip">+${earned} XP</span></div><p style="margin:0">${ok===items.length?'Every incident fixed!':'The boss will break things the same way. Stay sharp.'}</p></div><div class="actbar"><span></span><button class="btn primary go" data-next>Face the boss</button></div>`);
+    scr.onclick=e=>{if(e.target.closest('[data-quit]'))showMap();if(e.target.closest('[data-next]'))nextPhase()};if(ok===items.length)confetti()}
+  nx.onclick=()=>{i++;show()};
+  scr.onclick=e=>{if(e.target.closest('[data-quit]')){cancelAnimationFrame(raf);showMap();return}const b=e.target.closest('.opt');if(b&&!b.disabled)answer(+b.dataset.a)};
+  keyH=e=>{const n=+e.key;if(n>=1&&n<=ord.length&&!locked)answer(ord[n-1]);if(e.key==='Enter'&&!nx.hidden)nx.click()};
+  show();
+}
+
+function boss(){
+  const L=R.L,queue=L.final?shuffle([...L.bossOps]):[...L.bossOps],max=queue.length;let hp=max,busy=false,ord;R.hearts=3;
+  go(lvTop()+`<div class="arena"><div class="bname"><span class="tag">Boss</span><b>${L.boss}</b></div>${bossSVG(L.col,L.shape)}<div class="hp" role="progressbar" aria-label="Boss health" aria-valuemin="0" aria-valuemax="${max}" aria-valuenow="${max}"><i style="width:100%"></i></div><div class="hearts" data-o="h" aria-label="Your hearts"></div></div><div data-o="q"></div>`);
+  const ar=$('.arena'),bs=$('.arena .boss'),qa=$('[data-o="q"]');
+  const hearts=()=>{$('[data-o="h"]').innerHTML=[0,1,2].map(k=>HEART.replace('class="heart"',`class="heart ${k<R.hearts?'':'lost'}"`)).join('')};
+  function ask(){busy=false;ord=shuffle(queue[0].a.map((_,k)=>k));qa.innerHTML=`<div class="card scr"><span class="tag">${L.boss} attacks!</span>${opView(queue[0],ord)}</div><div data-o="why"></div>`}
+  function pick(k){if(busy)return;busy=true;const it=queue[0];
+    if(playOp(qa,it,k)){queue.shift();hp--;sfx('hit');
+      const s=document.createElement('span');s.className='shot';ar.append(s);s.animate([{transform:'translateY(0) rotate(0)'},{transform:`translateY(-${ar.clientHeight*.62}px) rotate(540deg)`}],{duration:RM?1:380,easing:'ease-in'});
+      setTimeout(()=>{s.remove();bs.classList.remove('hit');void bs.getBoundingClientRect();bs.classList.add('hit');const d=document.createElement('span');d.className='dmg';d.textContent='-1';ar.append(d);setTimeout(()=>d.remove(),1000);
+        $('.hp i').style.width=hp/max*100+'%';$('.hp').setAttribute('aria-valuenow',hp);
+        if(hp===0){bs.classList.add('dead');setTimeout(victory,1100)}else setTimeout(ask,1300)},RM?1:380)}
+    else{R.hearts--;hearts();sfx('bad');ar.classList.remove('ouch');void ar.offsetWidth;ar.classList.add('ouch');queue.push(queue.shift());
+      qa.querySelector('[data-o="why"]').innerHTML=`<div class="actbar"><span class="hint" style="margin:0">Ouch, -1 heart. This attack comes back later.</span><button class="btn primary" data-cont>${R.hearts?'Keep fighting':'Continue'}</button></div>`;
+      qa.querySelector('[data-cont]').onclick=()=>R.hearts?ask():defeat()}}
+  qa.onclick=e=>{const b=e.target.closest('.opt');if(b&&!b.disabled)pick(+b.dataset.a)};
+  keyH=e=>{const n=+e.key;if(n>=1&&n<=ord.length&&!busy)pick(ord[n-1])};
+  hearts();ask();
+}
+
+function defeat(){
+  go(lvTop()+`<div class="card results">${bossSVG(R.L.col,R.L.shape)}<h2>Out of hearts!</h2><p style="margin:0">${R.L.boss} wins this round. Your XP is safe.</p></div><div class="actbar"><button class="btn ghost" data-map>Map</button><button class="btn primary go" data-retry>Retry boss</button></div>`);
+  scr.onclick=e=>{if(e.target.closest('[data-map]')||e.target.closest('[data-quit]'))showMap();if(e.target.closest('[data-retry]'))boss()};
+}
+
+function victory(){
+  const L=R.L,stars=R.hearts,prev=S.stars[L.id]||0;S.stars[L.id]=Math.max(prev,stars);save();xp(prev?15:50);sfx('win');confetti();
+  if(L.final)return cert();
+  const nx=LV[R.i+1];
+  go(`<div class="victory"><p class="tag">Level ${R.i+1} cleared</p><h2>${L.boss} defeated!</h2><div class="stars">${[0,1,2].map(k=>`<svg class="star ${k<stars?'on':''}" style="--d:${.2+k*.25}s" viewBox="0 0 24 24" aria-hidden="true">${STAR}</svg>`).join('')}</div><p style="margin:0">${['','Lost 2 hearts.','Lost 1 heart.','Flawless!'][stars]} · +${S.xp-R.xp0} XP this level</p>
+    <p class="tag" style="margin-top:8px">${prev?'Your cards':'New cards collected'} · tap to flip</p><div class="fcs">${L.cards.map(([f,b],k)=>`<button class="fc" style="--d:${.8+k*.15}s" aria-label="${f}: tap to flip"><span class="fc-in"><span class="fc-f">${f}</span><span class="fc-b">${b}</span></span></button>`).join('')}</div></div>
+    <div class="actbar"><button class="btn ghost" data-map>Map</button><button class="btn primary go" data-next>${nx&&unlocked(R.i+1)?'Next level':'Back to map'}</button></div>`);
+  scr.onclick=e=>{const c=e.target.closest('.fc');if(c){c.classList.toggle('flip');sfx('tap')}if(e.target.closest('[data-map]'))showMap();if(e.target.closest('[data-next]'))nx&&unlocked(R.i+1)?brief(R.i+1):showMap()};
+}
+
+function cert(){
+  const d=new Date().toLocaleDateString(undefined,{year:'numeric',month:'long',day:'numeric'}),total=Object.values(S.stars).reduce((a,b)=>a+b,0);
+  go(`<div class="victory"><p class="tag">The Singularity defeated</p><h2>You beat AI Quest!</h2><label class="tag" for="cert-name">Your name</label><input type="text" id="cert-name" maxlength="40" placeholder="Your name" value="${esc(S.name||'')}" style="max-width:360px"><div class="cert"><span class="tag">Certificate of completion</span><h3 data-o="nm"></h3><span>completed <b>AI Quest: AI From Zero</b></span><span class="mono hint">${total} stars · ${S.xp} XP · ${d}</span></div><p class="hint">Take a screenshot to keep it.</p></div><div class="actbar"><span></span><button class="btn primary" data-map>Back to map</button></div>`);
+  const i=$('#cert-name'),nm=$('[data-o="nm"]'),up=()=>{S.name=i.value;nm.textContent=i.value.trim()||'Your name';save()};i.oninput=up;up();
+  scr.onclick=e=>{if(e.target.closest('[data-map]'))showMap()};
+}
+
+function deck(){
+  const all=LV.filter(l=>!l.final),got=all.filter(l=>S.stars[l.id]).reduce((n,l)=>n+l.cards.length,0),tot=all.reduce((n,l)=>n+l.cards.length,0);
+  go(`<div class="maphead"><div><p class="tag">Collection</p><h1>Cards</h1></div><span class="pill">${got} / ${tot} collected</span></div>
+  ${all.map(l=>`<p class="tag" style="margin-top:18px">${l.name}</p><div class="fcs">${l.cards.map(([f,b])=>S.stars[l.id]?`<button class="fc" aria-label="${f}: tap to flip"><span class="fc-in"><span class="fc-f">${f}</span><span class="fc-b">${b}</span></span></button>`:`<div class="fc locked"><span class="fc-in"><span class="fc-f">?</span></span></div>`).join('')}</div>`).join('')}
+  <div class="actbar"><span></span><button class="btn primary" data-map>Back to map</button></div>`);
+  scr.onclick=e=>{const c=e.target.closest('button.fc');if(c){c.classList.toggle('flip');sfx('tap')}if(e.target.closest('[data-map]'))showMap()};
+}
+
+$('#home').onclick=()=>showMap();
+$('#deckBtn').onclick=()=>deck();
+$('#snd').onclick=()=>{S.sound=!S.sound;save();hud();sfx('tap')};
+
+// self-checks for the logic that does math
+console.assert(tokenize('Hello world').length===2,'tokenize: two short words');
+console.assert(tokenize('unbelievably').length===3,'tokenize: long word splits into 4-char chunks');
+console.assert(Math.abs(apiCost(30,1500,400,3,15)-9.45)<1e-9,'apiCost: 30 msgs/day example');
+console.assert(LV.every(l=>[...l.bossOps,...(l.inc||[])].every(o=>o.a.filter(a=>a[2]).length===1)),'every scenario has exactly one best action');
+console.assert(LV.every(l=>l.final||l.learn.length&&l.learn.every(s=>ENG[s.t])),'every level has valid lessons');
+hud();showMap();
+</script>
