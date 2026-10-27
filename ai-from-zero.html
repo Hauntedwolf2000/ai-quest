@@ -445,8 +445,52 @@ table.mini td,table.mini th{border-bottom:1px solid var(--line);padding:5px 8px;
 .keyrow{padding:8px 10px;border-radius:8px;background:var(--paper);border:1px dashed var(--hi);word-break:break-all;font-size:.85rem}
 .done-b,.done-b:disabled{background:var(--good);color:var(--card);border-color:var(--good);opacity:1}
 
+/* ---------- guidance ---------- */
+.nudge{position:relative;z-index:1;outline:3px solid var(--hi);outline-offset:3px;border-radius:10px;animation:nudgep 1.3s ease-in-out infinite}
+@keyframes nudgep{50%{outline-offset:7px;outline-color:color-mix(in srgb,var(--hi) 40%,transparent)}}
+.nexthint{display:flex;gap:10px;align-items:center;margin:0 0 14px;padding:10px 14px;border-radius:12px;background:color-mix(in srgb,var(--hi) 20%,var(--card));border:1px solid color-mix(in srgb,var(--hi) 55%,var(--line));font-size:.98rem;animation:pop .35s both}
+.nexthint .arrow{flex:none;width:26px;height:26px;border-radius:50%;background:var(--hi);color:var(--ink);display:grid;place-items:center;font-weight:800;animation:poke 1s ease-in-out infinite}
+@keyframes poke{50%{transform:translateX(4px)}}
+.nexthint.fin{background:color-mix(in srgb,var(--good) 14%,var(--card));border-color:color-mix(in srgb,var(--good) 50%,var(--line))}
+.obj{position:relative}
+.say{position:absolute;left:12px;top:calc(100% + 10px);z-index:8;max-width:min(360px,calc(100% - 24px));background:var(--ink);color:var(--card);padding:10px 14px;border-radius:14px;font-size:.92rem;box-shadow:0 10px 30px -10px rgba(0,0,0,.5);animation:pop .35s both}
+.say::before{content:"";position:absolute;left:20px;top:-7px;border:7px solid transparent;border-top:0;border-bottom-color:var(--ink)}
+.legend{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:-6px 0 16px;font-size:.82rem}
+.lg{padding:4px 10px;border-radius:99px;border:1px solid var(--line);color:var(--muted);font-weight:700;background:var(--card)}
+.lg.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.lg.on small{opacity:.85;font-weight:400}
+.lg.done{color:var(--good);border-color:color-mix(in srgb,var(--good) 50%,var(--line))}
+.lg-ar{color:var(--muted)}
+.steps4{display:grid;gap:8px;width:100%;max-width:440px;text-align:left}
+.s4{display:flex;gap:12px;align-items:center;padding:10px 12px;border:1px solid var(--line);border-radius:14px;background:var(--paper);animation:pop .4s both}
+.s4:nth-child(2){animation-delay:.08s}.s4:nth-child(3){animation-delay:.16s}.s4:nth-child(4){animation-delay:.24s}
+.s4n{flex:none;width:30px;height:30px;border-radius:50%;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;font-family:var(--display);font-weight:800}
+.s4 b{display:block;font-family:var(--display)}
+.s4 small{color:var(--muted)}
+.coach{position:fixed;inset:0;z-index:70}
+.coach-hole{position:fixed;border-radius:14px;box-shadow:0 0 0 9999px rgba(10,14,30,.62);outline:3px solid var(--hi);transition:all .3s cubic-bezier(.2,.8,.2,1);pointer-events:none}
+.coach-tip{position:fixed;width:min(320px,calc(100vw - 32px));background:var(--card);color:var(--ink);border-radius:16px;padding:14px 16px;box-shadow:0 16px 40px -12px rgba(0,0,0,.5);animation:pop .3s both}
+.coach-tip p{margin:0 0 10px;font-weight:700}
+.coach-row{display:flex;align-items:center;gap:8px}
+.coach-row .mono{margin-right:auto!important}
+
+/* ---------- polish ---------- */
+.obj{padding:14px 16px;border:1px solid color-mix(in srgb,var(--accent) 22%,var(--line));background:linear-gradient(120deg,var(--soft),var(--card))}
+.obj .bot{width:52px;height:52px}
+.card{box-shadow:0 1px 0 var(--line),0 14px 34px -26px rgba(20,30,60,.45)}
+.sim-win{box-shadow:0 10px 26px -20px rgba(20,30,60,.55)}
+.tasks{padding:10px;border-radius:12px;background:var(--paper)}
+.schip{transition:background .2s,transform .15s}
+.schip:active:not(:disabled){transform:scale(.97)}
+
 @media (max-width:620px){
   .simgrid,.folders{grid-template-columns:minmax(0,1fr)}
+  .obj{gap:10px;padding:12px}
+  .obj .bot{width:40px;height:40px}
+  .obj b{font-size:1rem}
+  .nexthint{font-size:.9rem;padding:8px 10px}
+  .sim-body{max-height:300px}
+  .legend{font-size:.76rem}
   .two,.ctx,.loopwrap{grid-template-columns:minmax(0,1fr)}
   .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
   .pipe{grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -468,6 +512,7 @@ table.mini td,table.mini th{border-bottom:1px solid var(--line);padding:5px 8px;
   <span class="pill" title="Stars earned"><span class="starg">★</span><b id="stars">0</b></span>
   <button class="pill" id="deckBtn">Cards</button>
   <button class="pill" id="snd" aria-pressed="true">Sound on</button>
+  <button class="pill" id="helpBtn">Help</button>
 </div></header>
 <main class="wrap" id="screen"></main>
 
@@ -796,10 +841,24 @@ function agentLoop(el,done){
 
 /* ================= guided simulations: every lesson is a small working copy of a real tool ================= */
 const wait=ms=>new Promise(r=>setTimeout(r,RM?0:ms));
-function tasker(el,labels,done){
-  const box=document.createElement('div');box.className='tasks';box.innerHTML=labels.map((l,i)=>`<span class="task" data-t="${i}">${l}</span>`).join('');el.prepend(box);
+// Guidance: G.hint is the current next action; after 9s idle on a step that is not finished, Tok says it.
+const G={hint:'',t:0};
+function setHint(h,left){G.hint=h;const nb=$('[data-next]');if(nb&&nb.disabled&&left)nb.textContent=`Finish ${left} more task${left>1?'s':''}`}
+function idleArm(){clearTimeout(G.t);document.querySelectorAll('.say').forEach(x=>x.remove());
+  G.t=setTimeout(()=>{const o=$('#screen .obj'),nb=$('[data-next]');if(!o||!G.hint||!nb||!nb.disabled)return;o.insertAdjacentHTML('beforeend',`<div class="say" role="status"><b>Stuck? Try this:</b> ${G.hint}</div>`);mood('happy')},9000)}
+['pointerdown','keydown','input'].forEach(ev=>addEventListener(ev,idleArm,true));
+// Pulses the one control the player should use next; inputs inside a label highlight the whole label.
+function nudge(root,sel){root.querySelectorAll('.nudge').forEach(x=>x.classList.remove('nudge'));const t=sel&&root.querySelector(sel);if(t)(t.closest('label')||t).classList.add('nudge')}
+// Task checklist + "Next:" line. targets[i] is the selector of the control for task i.
+function tasker(el,labels,done,targets=[]){
+  const box=document.createElement('div');box.className='tasks';box.innerHTML=labels.map((l,i)=>`<span class="task" data-t="${i}">${l}</span>`).join('');
+  const nx=document.createElement('p');nx.className='nexthint';el.prepend(box);box.after(nx);
   const got=new Set();
-  return i=>{if(i<0||got.has(i))return;got.add(i);box.querySelector(`[data-t="${i}"]`).classList.add('on');sfx('ok');mood('happy');if(got.size===labels.length)done()};
+  function guide(){const i=labels.findIndex((_,k)=>!got.has(k));
+    if(i<0){nx.innerHTML='<b>All tasks done!</b> Tap the button at the bottom to go on.';nx.classList.add('fin');nudge(el,null);return}
+    nx.innerHTML=`<span class="arrow" aria-hidden="true">→</span><span><b>Next:</b> ${labels[i]}</span>`;nudge(el,targets[i]);setHint(labels[i],labels.length-got.size)}
+  guide();
+  return i=>{if(i<0||got.has(i))return;got.add(i);box.querySelector(`[data-t="${i}"]`).classList.add('on');sfx('ok');mood('happy');if(got.size===labels.length)done();guide()};
 }
 const SL={u:t=>`<p class="bub u">${t}</p>`,ai:t=>`<p class="bub ai">${t}</p>`,'$':t=>`<div class="term">$ ${t}</div>`,out:t=>`<div class="term out">${t}</div>`,err:t=>`<div class="sline err">${t}</div>`,ok:t=>`<div class="sline okl">${t}</div>`,sys:t=>`<div class="sline">${t}</div>`,tool:t=>`<div class="toolc"><span class="tag">tool call</span><span class="mono">${t}</span></div>`};
 const simLines=ls=>ls.map(([k,t])=>SL[k](t)).join('');
@@ -811,7 +870,7 @@ function chatSim(el,done,c){
   for(const k in c.set||{})st.set[k]=c.set[k].v;
   const setUI=c.set?`<div class="sim-set">${Object.entries(c.set).map(([k,s])=>s.o?`<label>${s.l} <select data-s="${k}">${s.o.map(o=>`<option${o===s.v?' selected':''}>${o}</option>`).join('')}</select></label>`:`<label><input type="checkbox" data-s="${k}"${s.v?' checked':''}> ${s.l}</label>`).join('')}</div>`:'';
   el.innerHTML=`<div class="simgrid${c.insp.length?'':' one'}"><div class="sim-win"><div class="sim-bar"><i></i><i></i><i></i><span>${c.app}</span><button class="btn small" data-new>New chat</button></div>${setUI}<div class="sim-body chatlog" data-o="log"><p class="hint" style="margin:auto;text-align:center">Tap a message below to send it.</p></div><div class="sim-chips">${c.chips.map(ch=>`<button class="schip" data-c="${ch.id}">${esc(ch.t)}</button>`).join('')}</div></div>${c.insp.length?'<div class="insp"><p class="tag" style="margin:0">Under the hood</p><div class="insp" data-o="insp"></div></div>':''}</div>`;
-  const hit=tasker(el,c.tasks.map(t=>t[0]),done),emit=ev=>c.tasks.forEach(([,e],i)=>e===ev&&hit(i));
+  const hit=tasker(el,c.tasks.map(t=>t[0]),done,c.tasks.map(([,ev,sel])=>sel||(c.chips.some(x=>x.id===ev)?`[data-c="${ev}"]`:null))),emit=ev=>c.tasks.forEach(([,e],i)=>e===ev&&hit(i));
   const log=el.querySelector('[data-o="log"]'),ins=el.querySelector('[data-o="insp"]');
   const sysTxt=()=>[c.sys,st.set.mem&&st.notes.length?'Saved memory: '+st.notes.join('; '):'',...st.docs].filter(Boolean).join('\n');
   const ctxTok=()=>tokenize(sysTxt()+' '+st.msgs.map(m=>m[1]).join(' ')).length;
@@ -843,26 +902,27 @@ function chatSim(el,done,c){
     busy=false;el.querySelectorAll('.schip,[data-new]').forEach(b=>b.disabled=false);
   }
   el.onclick=e=>{if(busy)return;const b=e.target.closest('[data-c]');if(b)send(c.chips.find(x=>x.id===b.dataset.c));
-    if(e.target.closest('[data-new]')){st.msgs=[];st.docs=[];log.innerHTML='<div class="divider">New chat</div>';insp();sfx('tap');emit('new')}};
-  el.onchange=e=>{const k=e.target.dataset.s;if(!k)return;st.set[k]=e.target.type==='checkbox'?e.target.checked:e.target.value;sfx('tap');insp();emit(k+':'+st.set[k])};
+    if(e.target.closest('[data-new]')){st.msgs=[];st.docs=[];log.innerHTML='<div class="divider">New chat</div>';insp();sfx('tap');nudge(el,'.schip:last-child');emit('new')}};
+  el.onchange=e=>{const k=e.target.dataset.s;if(!k)return;st.set[k]=e.target.type==='checkbox'?e.target.checked:e.target.value;sfx('tap');insp();nudge(el,'.schip');emit(k+':'+st.set[k])};
   insp();
 }
 
 function runPipe(el,done,{pieces}){
-  el.innerHTML=`<div class="buildrow">${pieces.map((_,i)=>`${i?'<span class="arw">→</span>':''}<div class="bp" data-i="${i}"><b>?</b></div>`).join('')}</div><div class="tools"><button class="btn primary" data-run>▶ Run</button></div>`;
-  let busy=false;
+  el.innerHTML=`<p class="nexthint"><span class="arrow" aria-hidden="true">→</span><span><b>Next:</b> press ▶ Run and watch each box fill in.</span></p><div class="buildrow">${pieces.map((_,i)=>`${i?'<span class="arw">→</span>':''}<div class="bp" data-i="${i}"><b>?</b></div>`).join('')}</div><div class="tools"><button class="btn primary nudge" data-run>▶ Run</button></div>`;
+  let busy=false;setHint('Press ▶ Run',1);
   el.onclick=async e=>{if(!e.target.closest('[data-run]')||busy)return;busy=true;const bs=el.querySelectorAll('.bp');bs.forEach(b=>{b.className='bp';b.innerHTML='<b>?</b>'});
     for(let i=0;i<pieces.length;i++){const[a,s]=pieces[i];bs[i].className='bp next';sfx('tap');await wait(450);bs[i].className='bp on';bs[i].innerHTML=`<b>${a}</b>${s?`<small>${s}</small>`:''}`;await wait(300)}
-    el.querySelector('[data-run]').textContent='▶ Run again';busy=false;done()};
+    const rb=el.querySelector('[data-run]');rb.textContent='▶ Run again';rb.classList.remove('nudge');el.querySelector('.nexthint').innerHTML='<b>Done!</b> Read the key idea, then tap the button at the bottom.';el.querySelector('.nexthint').classList.add('fin');busy=false;done()};
 }
 function split(el,done,{words}){
-  let n=0;el.innerHTML=`<div class="splitrow">${words.map(([w],i)=>`<button class="sw" data-i="${i}">${w}</button>`).join('')}</div>`;
+  let n=0;setHint('Tap each word to split it',words.length);el.innerHTML=`<p class="nexthint"><span class="arrow" aria-hidden="true">→</span><span><b>Next:</b> tap each glowing word.</span></p><div class="splitrow">${words.map(([w],i)=>`<button class="sw" data-i="${i}">${w}</button>`).join('')}</div>`;
   el.onclick=e=>{const b=e.target.closest('.sw');if(!b)return;const[,parts]=words[b.dataset.i],d=document.createElement('div');d.className='swout';
-    d.innerHTML=parts.map((p,k)=>`<span class="tok c${hash(p)%6}" style="--d:${k*.12}s">${esc(p)}</span>`).join('')+`<small class="mono">${parts.length} token${parts.length>1?'s':''}</small>`;b.replaceWith(d);sfx('tap');if(++n===words.length)done()};
+    d.innerHTML=parts.map((p,k)=>`<span class="tok c${hash(p)%6}" style="--d:${k*.12}s">${esc(p)}</span>`).join('')+`<small class="mono">${parts.length} token${parts.length>1?'s':''}</small>`;b.replaceWith(d);sfx('tap');if(++n===words.length){const h=el.querySelector('.nexthint');h.innerHTML='<b>All split!</b> Read the key idea, then tap the button at the bottom.';h.classList.add('fin');done()}};
 }
 function knob(el,done){
-  el.innerHTML=`<div class="knob"><div class="kbox"><span class="tag">Input</span><b>3</b></div><span class="arw">×</span><div class="kbox w"><span class="tag">Weight</span><b data-o="w"></b></div><span class="arw">=</span><div class="kbox" data-o="ob"><span class="tag">Output</span><b data-o="o"></b></div><span class="arw">goal</span><div class="kbox target"><span class="tag">Goal</span><b>12</b></div></div><div class="tools"><label for="kn"><b>Turn the weight</b></label><input type="range" id="kn" min="0" max="8" step="0.5" value="1"></div><p class="lbl">Error</p><div class="meter-bar" style="height:14px"><i data-o="e" style="background:var(--bad)"></i></div>`;
-  function run(w){const o=3*w,err=Math.abs(12-o);el.querySelector('[data-o="w"]').textContent=w;el.querySelector('[data-o="o"]').textContent=o;el.querySelector('[data-o="e"]').style.width=Math.min(100,err/12*100)+'%';el.querySelector('[data-o="ob"]').classList.toggle('hit',!err);if(!err){sfx('ok');mood('happy');done()}}
+  setHint('Drag the slider until Output = 12',1);
+  el.innerHTML=`<p class="nexthint"><span class="arrow" aria-hidden="true">→</span><span><b>Next:</b> drag the slider until Output equals the Goal (12).</span></p><div class="knob"><div class="kbox"><span class="tag">Input</span><b>3</b></div><span class="arw">×</span><div class="kbox w"><span class="tag">Weight</span><b data-o="w"></b></div><span class="arw">=</span><div class="kbox" data-o="ob"><span class="tag">Output</span><b data-o="o"></b></div><span class="arw">goal</span><div class="kbox target"><span class="tag">Goal</span><b>12</b></div></div><div class="tools"><label for="kn" class="nudge"><b>Turn the weight</b> <input type="range" id="kn" min="0" max="8" step="0.5" value="1"></label></div><p class="lbl">Error</p><div class="meter-bar" style="height:14px"><i data-o="e" style="background:var(--bad)"></i></div>`;
+  function run(w){const o=3*w,err=Math.abs(12-o);el.querySelector('[data-o="w"]').textContent=w;el.querySelector('[data-o="o"]').textContent=o;el.querySelector('[data-o="e"]').style.width=Math.min(100,err/12*100)+'%';el.querySelector('[data-o="ob"]').classList.toggle('hit',!err);if(!err){nudge(el,null);el.querySelector('.nexthint').innerHTML='<b>Error is zero!</b> That is training. Tap the button at the bottom.';el.querySelector('.nexthint').classList.add('fin');sfx('ok');mood('happy');done()}}
   el.querySelector('#kn').oninput=e=>run(+e.target.value);run(1);
 }
 function inboxSim(el,done){
@@ -870,9 +930,9 @@ function inboxSim(el,done){
   const P={rule:M.map(([s])=>/FREE/.test(s)?1:0),'10':[0,1,0,0,0,1],'1,000':[0,1,1,1,1,0],'100,000':[0,1,1,0,1,0]};
   let mode='rule',ex='10',busy=false;
   el.innerHTML=`<div class="tools"><div class="seg"><button class="seg-b on" data-m="rule">Rule: subject has "FREE"</button><button class="seg-b" data-m="ml">Learned model</button></div><label data-ex hidden>trained on <select id="ex">${['10','1,000','100,000'].map(x=>`<option>${x}</option>`).join('')}</select> examples</label><button class="btn primary" data-run>▶ Run filter</button></div><div class="folders"><div class="panel"><p class="lbl">Inbox</p><div data-f="0"></div></div><div class="panel"><p class="lbl">Spam</p><div data-f="1"></div></div></div><p class="status" data-o="sc"></p>`;
-  const hit=tasker(el,['Run the rule','Run a model trained on 10 examples','Run one trained on 100,000'],done);
-  el.querySelector('#ex').onchange=e=>ex=e.target.value;
-  el.onclick=async e=>{const m=e.target.closest('[data-m]');if(m){mode=m.dataset.m;el.querySelectorAll('[data-m]').forEach(b=>b.classList.toggle('on',b===m));el.querySelector('[data-ex]').hidden=mode==='rule'}
+  const hit=tasker(el,['Press ▶ Run filter (rule mode)','Switch to Learned model, then ▶ Run filter','Pick 100,000 examples, then ▶ Run filter'],done,['[data-run]','[data-m="ml"]','#ex']);
+  el.querySelector('#ex').onchange=e=>{ex=e.target.value;nudge(el,'[data-run]')};
+  el.onclick=async e=>{const m=e.target.closest('[data-m]');if(m){mode=m.dataset.m;el.querySelectorAll('[data-m]').forEach(b=>b.classList.toggle('on',b===m));el.querySelector('[data-ex]').hidden=mode==='rule';nudge(el,'[data-run]')}
     if(!e.target.closest('[data-run]')||busy)return;busy=true;const pred=P[mode==='rule'?'rule':ex];el.querySelectorAll('[data-f]').forEach(f=>f.innerHTML='');let ok=0;
     for(let i=0;i<M.length;i++){const good=pred[i]===M[i][1];ok+=good;el.querySelector(`[data-f="${pred[i]}"]`).insertAdjacentHTML('beforeend',`<div class="mail ${good?'':'bad'}">${good?'':'✗ '}${M[i][0]}</div>`);sfx(good?'tap':'bad');await wait(220)}
     const sc=el.querySelector('[data-o="sc"]');sc.className='status '+(ok===6?'good':'bad');sc.textContent=`${ok} of 6 sorted correctly`;busy=false;
@@ -881,16 +941,16 @@ function inboxSim(el,done){
 function trainStages(el,done){
   const S=['Pretrain on the internet','Fine-tune on chats','Feedback from people'],out=['xq7 bnn ;;r lamp ok?','What is the capital of Germany? What is the capital of Spain? What is','The capital of France is Paris.','The capital of France is Paris. Want a fun fact about it?'];let n=0;
   el.innerHTML=`<div class="tools">${S.map((s,i)=>`<button class="btn" data-s="${i}" ${i?'disabled':''}>${i+1}. ${s}</button>`).join('')}</div><div class="simgrid"><div>${simWin('Test console','<p class="bub u">What is the capital of France?</p><div data-o="ans"></div>')}<div class="tools"><button class="btn primary" data-ask>Ask the model</button></div></div><div class="insp"><p class="tag" style="margin:0">Model status</p><div class="panel" data-o="st"></div></div></div>`;
-  const hit=tasker(el,['Ask the untrained model','Pretrain, then ask','Fine-tune, then ask','Add feedback, then ask'],done);
+  const hit=tasker(el,['Tap "Ask the model" (untrained)','Tap stage 1, then "Ask the model"','Tap stage 2, then "Ask the model"','Tap stage 3, then "Ask the model"'],done,['[data-ask]','[data-s="0"]','[data-s="1"]','[data-s="2"]']);
   const status=()=>el.querySelector('[data-o="st"]').textContent=['Random weights. Knows nothing.','Base model: it autocompletes text.','Assistant: it answers questions.','Helpful assistant: answers the way people like.'][n];
-  el.onclick=async e=>{const s=e.target.closest('[data-s]');if(s&&!s.disabled){n=+s.dataset.s+1;s.disabled=true;s.classList.add('done-b');const nx=el.querySelector(`[data-s="${n}"]`);if(nx)nx.disabled=false;el.querySelector('[data-o="ans"]').innerHTML='';sfx('ok');status()}
+  el.onclick=async e=>{const s=e.target.closest('[data-s]');if(s&&!s.disabled){n=+s.dataset.s+1;s.disabled=true;s.classList.add('done-b');const nx=el.querySelector(`[data-s="${n}"]`);if(nx)nx.disabled=false;el.querySelector('[data-o="ans"]').innerHTML='';sfx('ok');status();nudge(el,'[data-ask]')}
     if(e.target.closest('[data-ask]')){const a=el.querySelector('[data-o="ans"]');a.innerHTML='<span class="typing"><i></i><i></i><i></i></span>';await wait(600);a.innerHTML=`<p class="bub ai">${out[n]}</p>`;hit(n)}};
   status();
 }
 function modelHub(el,done){
   const H=[['Llama 3.2 1B',1.3,90],['Llama 3.1 8B',4.9,35],['Qwen 2.5 14B',9,18],['Llama 3.1 70B',40,0],['Llama 3.1 405B',230,0]],RAM=16;
   el.innerHTML=`<div class="simgrid"><div>${simWin('Model hub · 4-bit downloads',H.map(([n,g],i)=>`<div class="hubrow"><b>${n}</b><span class="mono hint" style="margin:0">${g} GB</span><button class="btn small" data-h="${i}">Run</button></div>`).join(''))}<p class="hint">Sizes are approximate.</p></div><div class="insp"><p class="tag" style="margin:0">Your laptop · ${RAM} GB RAM</p><div class="ram"><i data-o="ram"></i></div><p class="mono" style="margin:0" data-o="use">0 / ${RAM} GB used</p><div data-o="out"></div></div></div>`;
-  const hit=tasker(el,['Run a model that fits','Try one that is too big'],done);let busy=false;
+  const hit=tasker(el,['Run Llama 3.1 8B (fits)','Now run Llama 3.1 70B (too big)'],done,['[data-h="1"]','[data-h="3"]']);let busy=false;
   el.onclick=async e=>{const b=e.target.closest('[data-h]');if(!b||busy)return;busy=true;const[n,g,tps]=H[b.dataset.h],r=el.querySelector('[data-o="ram"]'),o=el.querySelector('[data-o="out"]');
     r.style.width='0';r.className='';o.innerHTML=`<div class="term out">loading ${n}…</div>`;await wait(60);r.style.width=Math.min(100,g/RAM*100)+'%';el.querySelector('[data-o="use"]').textContent=`${Math.min(g,RAM)} / ${RAM} GB used`;await wait(750);
     if(g>RAM){r.className='full';o.innerHTML=`<div class="sline err">Out of memory: needs ${g} GB. Crashed.</div>`;const ram=el.querySelector('.ram');ram.classList.remove('shk');void ram.offsetWidth;ram.classList.add('shk');sfx('bad');mood('oops');hit(1)}
@@ -899,8 +959,8 @@ function modelHub(el,done){
 function terminalSim(el,done){
   let pulled=false,running=false,net=true,busy=false;
   el.innerHTML=`<div class="tools"><label><input type="checkbox" id="wifi" checked> Wi-Fi</label></div>${simWin('Terminal · ollama','<div data-o="t" style="display:grid;gap:6px"><div class="term out">Ollama is installed. Tap a command.</div></div>')}<div class="sim-chips"><button class="schip" data-k="pull">ollama pull llama3.2</button><button class="schip" data-k="run">ollama run llama3.2</button><button class="schip" data-k="ask">Ask: What is a token?</button></div>`;
-  const hit=tasker(el,['Download the model','Start it','Turn Wi-Fi off, then ask it'],done),t=el.querySelector('[data-o="t"]'),add=h=>{t.insertAdjacentHTML('beforeend',h);t.parentElement.scrollTop=1e6};
-  el.querySelector('#wifi').onchange=e=>{net=e.target.checked;sfx('tap')};
+  const hit=tasker(el,['Tap "ollama pull llama3.2" to download','Tap "ollama run llama3.2" to start it','Untick Wi-Fi, then tap "Ask"'],done,['[data-k="pull"]','[data-k="run"]','#wifi']),t=el.querySelector('[data-o="t"]'),add=h=>{t.insertAdjacentHTML('beforeend',h);t.parentElement.scrollTop=1e6};
+  el.querySelector('#wifi').onchange=e=>{net=e.target.checked;sfx('tap');if(!net&&running)nudge(el,'[data-k="ask"]')};
   el.onclick=async e=>{const b=e.target.closest('[data-k]');if(!b||busy)return;busy=true;const k=b.dataset.k;
     if(k==='pull'){add('<div class="term">$ ollama pull llama3.2</div>');if(!net){add('<div class="sline err">Error: network unreachable. Downloading needs internet.</div>');sfx('bad')}else{const p=document.createElement('div');p.className='term out';t.append(p);for(let i=0;i<=100;i+=10){p.textContent=`pulling ${'█'.repeat(i/10)}${'░'.repeat(10-i/10)} ${i}% of 2.0 GB`;await wait(110)}add('<div class="sline okl">success</div>');pulled=true;hit(0)}}
     if(k==='run'){add('<div class="term">$ ollama run llama3.2</div>');if(!pulled){add('<div class="sline err">Error: model not found. Pull it first.</div>');sfx('bad')}else{running=true;add('<div class="term out">&gt;&gt;&gt; Send a message (/bye to exit)</div>');sfx('ok');hit(1)}}
@@ -910,18 +970,18 @@ function terminalSim(el,done){
 function keyConsole(el,done){
   let key=null,revoked=false;
   el.innerHTML=`<div class="simgrid"><div>${simWin('Console · API keys','<div data-o="k"><span class="hint" style="margin:0">No keys yet.</span></div><div class="tools" style="margin:0"><button class="btn small" data-a="create">+ Create key</button><button class="btn small" data-a="revoke" disabled>Revoke key</button></div>')}</div><div>${simWin('Your code','<pre class="code" data-o="req"></pre><div class="tools" style="margin:0"><button class="btn primary small" data-a="send">Send request</button></div><div data-o="res"></div>')}</div></div>`;
-  const hit=tasker(el,['Send a request with no key','Create a key and send again','Revoke it and send again'],done),o=k=>el.querySelector(`[data-o="${k}"]`);
+  const hit=tasker(el,['Tap "Send request" (no key yet)','Tap "+ Create key", then "Send request"','Tap "Revoke key", then "Send request"'],done,['[data-a="send"]','[data-a="create"]','[data-a="revoke"]']),o=k=>el.querySelector(`[data-o="${k}"]`);
   const req=()=>o('req').textContent=`POST /v1/messages\nx-api-key: ${key?key.slice(0,12)+'…':'(missing)'}\n\n{"model": "claude-sonnet-5-5",\n "messages": [ … ]}`;
   el.onclick=e=>{const a=e.target.closest('[data-a]');if(!a)return;const k=a.dataset.a;
-    if(k==='create'){key='sk-sim-'+Math.random().toString(36).slice(2,10)+Math.random().toString(36).slice(2,10);revoked=false;o('k').innerHTML=`<div class="keyrow mono">${key}</div><p class="hint" style="margin:4px 0 0">Shown once. Treat it like a password.</p>`;el.querySelector('[data-a="revoke"]').disabled=false;sfx('ok');req()}
-    if(k==='revoke'){revoked=true;o('k').innerHTML=`<div class="keyrow mono" style="text-decoration:line-through">${key}</div><p class="hint" style="margin:4px 0 0">Revoked. It no longer works.</p>`;a.disabled=true;sfx('tap')}
+    if(k==='create'){key='sk-sim-'+Math.random().toString(36).slice(2,10)+Math.random().toString(36).slice(2,10);revoked=false;o('k').innerHTML=`<div class="keyrow mono">${key}</div><p class="hint" style="margin:4px 0 0">Shown once. Treat it like a password.</p>`;el.querySelector('[data-a="revoke"]').disabled=false;sfx('ok');req();nudge(el,'[data-a="send"]')}
+    if(k==='revoke'){revoked=true;o('k').innerHTML=`<div class="keyrow mono" style="text-decoration:line-through">${key}</div><p class="hint" style="margin:4px 0 0">Revoked. It no longer works.</p>`;a.disabled=true;sfx('tap');nudge(el,'[data-a="send"]')}
     if(k==='send'){const r=o('res');if(!key){r.innerHTML='<div class="sline err">401 Unauthorized · missing API key</div>';sfx('bad');hit(0)}else if(revoked){r.innerHTML='<div class="sline err">401 Unauthorized · this key was revoked</div>';sfx('bad');hit(2)}else{r.innerHTML='<div class="sline okl">200 OK · "Hello! How can I help?" · 9 in / 7 out tokens · billed to you</div>';sfx('ok');hit(1)}}};
   req();
 }
 function leakSim(el,done){
   let safe=false,spend=0,iv=null,leaked=false;
   el.innerHTML=`<div class="simgrid"><div>${simWin('app.js · public repo','<pre class="code" data-o="code"></pre><div class="tools" style="margin:0"><button class="btn small" data-a="push">git push</button><button class="btn small" data-a="fix">Move key to .env</button></div><div data-o="log" style="display:grid;gap:6px"></div>')}</div><div class="insp"><p class="tag" style="margin:0">Your API bill</p><div class="big mono" data-o="usd">$0.00</div><div class="tools" style="margin:0"><button class="btn small" data-a="revoke">Revoke leaked key</button></div></div></div>`;
-  const hit=tasker(el,['Push with the key in the code','Stop the bill','Push safely using .env'],done),o=k=>el.querySelector(`[data-o="${k}"]`);
+  const hit=tasker(el,['Tap "git push" with the key in the code','Tap "Revoke leaked key" to stop the bill','Tap "Move key to .env", then "git push"'],done,['[data-a="push"]','[data-a="revoke"]','[data-a="fix"]']),o=k=>el.querySelector(`[data-o="${k}"]`);
   const code=()=>o('code').textContent=safe?'// .gitignore contains: .env\nconst KEY = process.env.API_KEY;':'const KEY = "sk-sim-7Hq2…9xL"; // hard-coded!';
   const logl=h=>o('log').insertAdjacentHTML('beforeend',h);
   el.onclick=async e=>{const a=e.target.closest('[data-a]');if(!a)return;const k=a.dataset.a;
@@ -929,7 +989,7 @@ function leakSim(el,done){
       if(safe){if(iv){logl('<div class="sline err">Pushed, but the leaked key still works. Revoke it!</div>');sfx('bad')}else{logl('<div class="sline okl">Secret scan: no secrets found.</div>');sfx('ok');if(leaked)hit(2)}}
       else{logl('<div class="sline err">A bot found your key in seconds. Someone is using it.</div>');sfx('bad');mood('oops');leaked=true;clearInterval(iv);iv=setInterval(()=>{if(!el.isConnected)return clearInterval(iv);spend+=37.5;o('usd').textContent='$'+spend.toFixed(2)},200);hit(0)}}
     if(k==='revoke'){if(!iv)return toast('Nothing is leaking yet.');clearInterval(iv);iv=null;logl('<div class="sline okl">Key revoked. The spending stopped.</div>');sfx('ok');hit(1)}
-    if(k==='fix'){safe=true;code();logl('<div class="sline">Key moved to .env, and .env is listed in .gitignore.</div>');sfx('tap')}};
+    if(k==='fix'){safe=true;code();logl('<div class="sline">Key moved to .env, and .env is listed in .gitignore.</div>');sfx('tap');nudge(el,'[data-a="push"]')}};
   code();
 }
 function searchSim(el,done){
@@ -937,8 +997,8 @@ function searchSim(el,done){
   const Q={'refund':[.93,.2,.55,.1],'money back':[.88,.12,.5,.08],'when will my order arrive':[.15,.91,.3,.2]};
   let mode='kw';
   el.innerHTML=`<div class="tools"><div class="seg"><button class="seg-b on" data-m="kw">Keyword search</button><button class="seg-b" data-m="sem">Semantic search</button></div></div>${simWin('Help center search','<div data-o="r" style="display:grid;gap:8px"><span class="hint" style="margin:0">Pick a search below.</span></div>')}<div class="sim-chips">${Object.keys(Q).map(q=>`<button class="schip" data-q="${q}">${q}</button>`).join('')}</div>`;
-  const hit=tasker(el,['Keyword search for "money back"','Semantic search for "money back"'],done);
-  el.onclick=e=>{const m=e.target.closest('[data-m]');if(m){mode=m.dataset.m;el.querySelectorAll('[data-m]').forEach(b=>b.classList.toggle('on',b===m));sfx('tap')}
+  const hit=tasker(el,['Tap the "money back" search (keyword mode)','Switch to Semantic search, tap "money back" again'],done,['[data-q="money back"]','[data-m="sem"]']);
+  el.onclick=e=>{const m=e.target.closest('[data-m]');if(m){mode=m.dataset.m;el.querySelectorAll('[data-m]').forEach(b=>b.classList.toggle('on',b===m));sfx('tap');if(mode==='sem')nudge(el,'[data-q="money back"]')}
     const b=e.target.closest('[data-q]');if(!b)return;const q=b.dataset.q,r=el.querySelector('[data-o="r"]');
     if(mode==='kw'){const res=D.filter(d=>q.split(' ').some(w=>w.length>3&&d.toLowerCase().includes(w)));
       r.innerHTML=`<p class="lbl" style="margin:0">Documents containing the words "${q}"</p>`+(res.length?res.map(d=>`<div class="doc">${d}</div>`).join(''):'<div class="sline err">0 results. No document has those exact words.</div>');sfx(res.length?'tap':'bad');if(q==='money back')hit(0)}
@@ -959,8 +1019,8 @@ llm:[
    {id:'pb',t:'Peanut butter and',r:()=>({cand:[[' jelly',[[' jelly',82],[' banana',9],[' honey',6]]],[' sandwiches',[[' sandwiches',40],[' toast',30],['.',20]]],[' are',[[' are',50],[' taste',30],[' make',15]]],[' a',[[' a',60],[' the',20],[' my',10]]],[' classic',[[' classic',55],[' favorite',35],[' treat',5]]],['.',[['.',80],['!',15],[' combo',5]]]]})},
    {id:'sky',t:'The sky is',r:()=>({cand:[[' blue',[[' blue',70],[' clear',15],[' falling',3]]],[' today',[[' today',45],['.',40],[' and',10]]],['.',[['.',85],['!',10],[' again',5]]]]})}],
   tasks:[['Send "Peanut butter and"','pb'],['Send "The sky is"','sky']]},'Every reply is built one token at a time, picked from a list of likely next tokens.'),
- chat('Change the temperature and ask for the same story.',{app:'ChatBot',set:{temp:{l:'Temperature',v:'1.0',o:['0.2','1.0','1.8']}},insp:[],chips:[{id:'s',t:'Start a story about a cat',r:st=>({t:{'0.2':'Once upon a time, there was a cat.','1.0':'Every night, the cat secretly ran a tiny bakery.','1.8':'Cat. Purple moon spaghetti! The violin barked sideways.'}[st.set.temp],ev:'t'+st.set.temp})}],tasks:[['Send at 0.2','t0.2'],['Send at 1.8','t1.8'],['Send at 1.0','t1.0']]},'Low temperature = safe and predictable. High = creative, then nonsense.'),
- chat('Ask about a book. Then give the bot a search tool and ask again.',{app:'ChatBot',set:{web:{l:'Web search tool',v:false}},insp:[],chips:[{id:'b',t:'Who wrote "The Silent Orbit" (1987)?',r:st=>st.set.web?{tools:[['web_search','"The Silent Orbit" 1987','0 results']],t:"I couldn't find any book with that title. It may not exist.",ev:'real'}:{t:'It was written by Dr. Helen Marsh, a NASA physicist, and won a Hugo Award.',ev:'fake'}}],tasks:[['Ask with search off','fake'],['Turn search on, ask again','real']]},'With no source, it invented an author. That is a hallucination. Tools and sources keep it honest.'),
+ chat('Change the temperature and ask for the same story.',{app:'ChatBot',set:{temp:{l:'Temperature',v:'1.0',o:['0.2','1.0','1.8']}},insp:[],chips:[{id:'s',t:'Start a story about a cat',r:st=>({t:{'0.2':'Once upon a time, there was a cat.','1.0':'Every night, the cat secretly ran a tiny bakery.','1.8':'Cat. Purple moon spaghetti! The violin barked sideways.'}[st.set.temp],ev:'t'+st.set.temp})}],tasks:[['Set Temperature to 0.2, then send the story','t0.2','[data-s="temp"]'],['Set it to 1.8, then send again','t1.8','[data-s="temp"]'],['Set it to 1.0, then send again','t1.0','[data-s="temp"]']]},'Low temperature = safe and predictable. High = creative, then nonsense.'),
+ chat('Ask about a book. Then give the bot a search tool and ask again.',{app:'ChatBot',set:{web:{l:'Web search tool',v:false}},insp:[],chips:[{id:'b',t:'Who wrote "The Silent Orbit" (1987)?',r:st=>st.set.web?{tools:[['web_search','"The Silent Orbit" 1987','0 results']],t:"I couldn't find any book with that title. It may not exist.",ev:'real'}:{t:'It was written by Dr. Helen Marsh, a NASA physicist, and won a Hugo Award.',ev:'fake'}}],tasks:[['Send the question (search is off)','fake','[data-c="b"]'],['Tick "Web search tool", then send again','real','[data-s="web"]']]},'With no source, it invented an author. That is a hallucination. Tools and sources keep it honest.'),
  sim('stages','Train a model stage by stage. Ask it a question after each one.','Pretraining makes an autocompleter. Fine-tuning makes an assistant. Feedback makes it helpful.')],
 par:[
  sim('knob','This is one parameter. Train it by hand.','That is training: adjust the weights until the error is zero. Real models adjust billions.'),
@@ -972,14 +1032,14 @@ mem:[
  chat('Test if the bot remembers you. Try it with memory off and on.',{app:'ChatBot',set:{mem:{l:'Memory',v:false}},insp:['ctx','mem'],chips:[
    {id:'me',t:"I'm Sam, and I love cricket.",r:st=>({t:'Nice to meet you, Sam!',note:st.set.mem?'Name: Sam. Loves cricket.':null})},
    {id:'who',t:'Who am I?',r:st=>st.msgs.slice(0,-1).some(m=>m[1].startsWith("I'm Sam"))?{t:'You are Sam!',ev:'hist'}:st.set.mem&&st.notes.length?{t:"You're Sam, and you love cricket!",ev:'mem'}:{t:"I don't know who you are.",ev:'none'}}],
-  tasks:[['Tell it, then ask (same chat)','hist'],['Memory off: new chat, ask','none'],['Memory on: tell it, new chat, ask','mem']]},'The model never remembers. Apps re-send the chat, or save notes and put them back into the context.')],
+  tasks:[['Send "I\x27m Sam…", then "Who am I?"','hist','[data-c="me"]'],['Tap "New chat", then ask "Who am I?"','none','[data-new]'],['Tick Memory, send "I\x27m Sam…", New chat, ask again','mem','[data-s="mem"]']]},'The model never remembers. Apps re-send the chat, or save notes and put them back into the context.')],
 pr:[
  chat('Send a vague prompt, then a specific one. Then try a system prompt.',{app:'ChatBot',set:{sys:{l:'System prompt',v:'(none)',o:['(none)','Talk like a pirate','Reply in one line']}},insp:[],chips:[
    {id:'v',t:'Tell me about dogs',r:st=>({t:{'(none)':'Dogs are domesticated mammals. They come in many breeds, sizes and colors, and have lived with humans for thousands of years…','Talk like a pirate':'Arr! Dogs be loyal crewmates, matey!','Reply in one line':'Dogs: loyal, smart, furry friends.'}[st.set.sys],ev:st.set.sys==='(none)'?'v':'sys'})},
    {id:'s',t:'3 fun facts about dog noses for a 10-year-old, as bullets',r:st=>({t:{'(none)':'• Every dog nose print is unique, like a fingerprint.\n• Dogs smell about 10,000× better than us.\n• A wet nose helps catch smells.','Talk like a pirate':'Arr!\n• Nose prints be unique as treasure maps!\n• They sniff 10,000× better than ye!\n• Wet noses catch the sea breeze!','Reply in one line':'Unique nose prints, super smell, wet noses catch scents.'}[st.set.sys],ev:st.set.sys==='(none)'?'s':'sys'})}],
-  tasks:[['Send the vague prompt','v'],['Send the specific prompt','s'],['Pick a system prompt, then send','sys']]},'Specific prompts get specific answers. The system prompt changes every reply.')],
+  tasks:[['Send the vague prompt','v'],['Send the specific prompt','s'],['Pick a System prompt above, then send a prompt again','sys','[data-s="sys"]']]},'Specific prompts get specific answers. The system prompt changes every reply.')],
 loc:[
- chat('This chat runs on a company\'s servers. Send a message, then cut the Wi-Fi.',{app:'Cloud chat',set:{net:{l:'Wi-Fi',v:true}},insp:[],chips:[{id:'q',t:'Explain AI in one line',r:st=>st.set.net?{t:'AI is software that learns patterns from data.',ev:'on'}:{t:'Network error: could not reach the server.',err:true,ev:'off'}}],tasks:[['Send with Wi-Fi on','on'],['Turn Wi-Fi off, send again','off']]},'Cloud models live on someone else\'s computers. No internet, no answer.'),
+ chat('This chat runs on a company\'s servers. Send a message, then cut the Wi-Fi.',{app:'Cloud chat',set:{net:{l:'Wi-Fi',v:true}},insp:[],chips:[{id:'q',t:'Explain AI in one line',r:st=>st.set.net?{t:'AI is software that learns patterns from data.',ev:'on'}:{t:'Network error: could not reach the server.',err:true,ev:'off'}}],tasks:[['Send the message (Wi-Fi on)','on','[data-c="q"]'],['Untick Wi-Fi, then send again','off','[data-s="net"]']]},'Cloud models live on someone else\'s computers. No internet, no answer.'),
  sim('term','This is Ollama, a real tool that runs models on your own computer. Try it.','Local models download once, then run with no internet. Your text never leaves your device.')],
 pay:[
  chat('Use the API and watch your bill. Try to hit the rate limit.',{app:'API playground',insp:['cost'],chips:[
@@ -987,15 +1047,15 @@ pay:[
    {id:'doc',t:'Summarize this 300-page book [attached]',in:100000,r:()=>({t:'Here is a one-paragraph summary of the book…'})},
    {id:'long',t:'Write a 2,000-word essay',r:()=>({t:'Here is your essay… (2,700 tokens of text)',out:2700})},
    {id:'flood',t:'Send 100 requests in 1 second',r:()=>({t:'429 Too Many Requests. Slow down and retry.',err:true,ev:'429'})}],
-  tasks:[['Send a short message','short'],['Send the big book','doc'],['Ask for a long essay','long'],['Hit the rate limit','429']]},'You pay per token, in and out. Output costs more. Too many requests at once returns error 429.')],
+  tasks:[['Send a short message','short'],['Send the big book','doc'],['Ask for a long essay','long'],['Send 100 requests to hit the rate limit','429','[data-c="flood"]']]},'You pay per token, in and out. Output costs more. Too many requests at once returns error 429.')],
 key:[
  sim('keys','This is an API console. Make your code work, then lock it out.','No key = 401 error. A key unlocks the API and bills you. A revoked key is dead.'),
  sim('leak','Push this code to a public GitHub repo. Watch what happens.','Leaked keys get stolen in seconds. Revoke first, then keep keys in .env.')],
 rag:[
  sim('search','A customer searches your help center. Try both search types.','Keyword search needs exact words. Embeddings find meaning, so "money back" finds "refunds".'),
- chat('Ask the support bot. Then let it search your docs (RAG).',{app:'Support bot',set:{rag:{l:'Search company docs (RAG)',v:false}},insp:['ctx'],chips:[{id:'q',t:'What is your refund window?',r:st=>st.set.rag?{tools:[['search_docs','"refund window"','policy.pdf: Refunds within 30 days']],ctx:'Doc [policy.pdf]: Refunds within 30 days of purchase.',t:'Refunds are accepted within 30 days of purchase. (Source: policy.pdf)',ev:'rag'}:{t:'Our refund window is 90 days!',ev:'norag'}}],tasks:[['Ask without docs','norag'],['Turn on RAG, ask again','rag']]},'RAG finds the right document and puts it in the context. Real answers, with a source.')],
+ chat('Ask the support bot. Then let it search your docs (RAG).',{app:'Support bot',set:{rag:{l:'Search company docs (RAG)',v:false}},insp:['ctx'],chips:[{id:'q',t:'What is your refund window?',r:st=>st.set.rag?{tools:[['search_docs','"refund window"','policy.pdf: Refunds within 30 days']],ctx:'Doc [policy.pdf]: Refunds within 30 days of purchase.',t:'Refunds are accepted within 30 days of purchase. (Source: policy.pdf)',ev:'rag'}:{t:'Our refund window is 90 days!',ev:'norag'}}],tasks:[['Send the question (no docs)','norag','[data-c="q"]'],['Tick "Search company docs", then send again','rag','[data-s="rag"]']]},'RAG finds the right document and puts it in the context. Real answers, with a source.')],
 agt:[
- chat('Ask about live weather. Give the bot tools, one at a time.',{app:'Agent',set:{w:{l:'Weather tool',v:false},c:{l:'Calculator tool',v:false}},insp:[],chips:[{id:'q',t:'Weather in Paris right now, in °F?',r:st=>!st.set.w?{t:"I can't check live weather. I only know my training data.",ev:'none'}:!st.set.c?{tools:[['get_weather','city="Paris"','18 °C, cloudy']],t:"It's 18 °C and cloudy. I can't convert exactly without a calculator.",ev:'w'}:{tools:[['get_weather','city="Paris"','18 °C, cloudy'],['calculator','18*9/5+32','64.4']],t:"It's about 64 °F and cloudy in Paris.",ev:'both'}}],tasks:[['Ask with no tools','none'],['Turn on weather, ask','w'],['Turn on both tools, ask','both']]},'The model asks for tools, your app runs them, and the model uses the results. Think → act → observe.')],
+ chat('Ask about live weather. Give the bot tools, one at a time.',{app:'Agent',set:{w:{l:'Weather tool',v:false},c:{l:'Calculator tool',v:false}},insp:[],chips:[{id:'q',t:'Weather in Paris right now, in °F?',r:st=>!st.set.w?{t:"I can't check live weather. I only know my training data.",ev:'none'}:!st.set.c?{tools:[['get_weather','city="Paris"','18 °C, cloudy']],t:"It's 18 °C and cloudy. I can't convert exactly without a calculator.",ev:'w'}:{tools:[['get_weather','city="Paris"','18 °C, cloudy'],['calculator','18*9/5+32','64.4']],t:"It's about 64 °F and cloudy in Paris.",ev:'both'}}],tasks:[['Send the question (no tools)','none','[data-c="q"]'],['Tick "Weather tool", then send again','w','[data-s="w"]'],['Tick "Calculator tool" too, then send again','both','[data-s="c"]']]},'The model asks for tools, your app runs them, and the model uses the results. Think → act → observe.')],
 };
 
 // Incident desk + boss scenarios: a simulated screen, then actions whose outcome plays out on that screen. [label, outcome lines, best?]
@@ -1172,7 +1232,7 @@ function hud(){$('#lvl').textContent=Math.floor(S.xp/100)+1;$('#xp').textContent
 function xp(n){const lv=Math.floor(S.xp/100);S.xp+=n;save();hud();const r=$('#xp').getBoundingClientRect(),f=document.createElement('span');f.className='xpfloat';f.textContent='+'+n+' XP';f.style.left=r.left+'px';f.style.top=r.bottom+6+'px';document.body.append(f);setTimeout(()=>f.remove(),1200);
   if(Math.floor(S.xp/100)>lv){toast(`Level up! You are now level ${Math.floor(S.xp/100)+1}.`);sfx('lvl')}}
 function toast(t){document.querySelectorAll('.toast').forEach(x=>x.remove());const d=document.createElement('div');d.className='toast';d.setAttribute('role','status');d.textContent=t;document.body.append(d);setTimeout(()=>d.remove(),2800)}
-function go(html){keyH=null;scr.innerHTML=`<div class="scr">${html}</div>`;scrollTo({top:0})}
+function go(html){keyH=null;G.hint='';scr.innerHTML=`<div class="scr">${html}</div>`;scrollTo({top:0});idleArm()}
 function confetti(){if(RM)return;const c=document.createElement('canvas');c.className='confetti';document.body.append(c);const d=devicePixelRatio||1,W=innerWidth,H=innerHeight;c.width=W*d;c.height=H*d;const x=c.getContext('2d');x.scale(d,d);
   const cols=['--accent','--hi','--good','--cat','--pink'].map(css),ps=Array.from({length:160},()=>({x:W/2,y:H/3,vx:(Math.random()-.5)*15,vy:-Math.random()*13-3,r:Math.random()*7+4,c:cols[Math.random()*cols.length|0],a:Math.random()*6}));let t=0;
   (function f(){x.clearRect(0,0,W,H);for(const p of ps){p.vy+=.35;p.vx*=.99;p.x+=p.vx;p.y+=p.vy;p.a+=.2;x.save();x.translate(p.x,p.y);x.rotate(p.a);x.fillStyle=p.c;x.fillRect(-p.r/2,-p.r/4,p.r,p.r/2);x.restore()}if(++t<120)requestAnimationFrame(f);else c.remove()})()}
@@ -1195,12 +1255,29 @@ function showMap(){
   scr.onclick=e=>{const n=e.target.closest('[data-i]');if(n&&!n.disabled){sfx('tap');brief(+n.dataset.i)}};
   let armed=false;$('#resetAll').onclick=e=>{e.stopPropagation();if(!armed){armed=true;e.target.textContent='Tap again to erase everything';setTimeout(()=>{armed=false;if(e.target.isConnected)e.target.textContent='Reset progress'},3000);return}S={xp:0,stars:{},sound:S.sound,name:''};save();hud();showMap()};
   if(cur>0){const n=$(`.node[data-i="${cur}"]`);n&&n.scrollIntoView({block:'center',behavior:RM?'auto':'smooth'})}
+  let seen=G.toured;try{seen=seen||localStorage.getItem('ai-quest.tour')}catch(e){}
+  if(!seen&&!Object.keys(S.stars).length)tour();
+}
+
+// First-visit coach marks on the map: dim the page, spotlight one control, explain it in one line.
+function tour(){
+  document.querySelector('.coach')?.remove();
+  const steps=[['.node.cur','Each circle is a level. Clear a level to unlock the next one.'],['.actbar .btn.primary','Tap Play to start. Every level goes Learn → Missions → Incident desk → Boss.'],['#deckBtn','Win levels to earn XP and stars, and collect a card for every idea you learn.'],['#helpBtn','Stuck anywhere? Follow the glowing control and the “Next” line. Tap Help to see this again.']];
+  let i=0;const ov=document.createElement('div');ov.className='coach';ov.setAttribute('role','dialog');ov.setAttribute('aria-label','Quick tour');document.body.append(ov);
+  G.toured=true;const end=()=>{ov.remove();try{localStorage.setItem('ai-quest.tour','1')}catch(e){}};
+  function show(){const t=$(steps[i][0]);if(!t)return ++i<steps.length?show():end();t.scrollIntoView({block:'center'});const r=t.getBoundingClientRect(),p=8;
+    ov.innerHTML=`<div class="coach-hole" style="left:${r.left-p}px;top:${r.top-p}px;width:${r.width+p*2}px;height:${r.height+p*2}px"></div><div class="coach-tip"><p>${steps[i][1]}</p><div class="coach-row"><span class="mono hint" style="margin:0">${i+1} / ${steps.length}</span><button class="btn small ghost" data-skip>Skip</button><button class="btn small primary" data-nx>${i<steps.length-1?'Next':'Let’s go'}</button></div></div>`;
+    const tip=ov.querySelector('.coach-tip'),h=tip.offsetHeight,w=tip.offsetWidth;
+    tip.style.left=Math.max(16,Math.min(innerWidth-w-16,r.left+r.width/2-w/2))+'px';tip.style.top=(r.bottom+p+12+h<innerHeight?r.bottom+p+12:Math.max(16,r.top-p-12-h))+'px';ov.querySelector('[data-nx]').focus()}
+  ov.onclick=e=>{if(e.target.closest('[data-skip]'))return end();if(e.target.closest('[data-nx]')){if(++i>=steps.length)end();else show()}};
+  ov.onkeydown=e=>{if(e.key==='Escape')end()};
+  setTimeout(()=>ov.isConnected&&show(),RM?0:400);
 }
 
 function brief(i){
   const L=LV[i],st=S.stars[L.id]||0;
   go(`<div class="card brief"><p class="tag">${L.final?'Final level':'Level '+(i+1)}</p><h2 style="font-size:clamp(1.6rem,4.5vw,2.3rem)">${L.name}</h2>${bossSVG(L.col,L.shape)}<p style="margin:0">Defeat <b>${L.boss}</b></p>
-    <div class="chips">${L.learn.length?`<span class="chip">${L.learn.length} quick lessons</span>`:''}${L.missions.length?`<span class="chip">${L.missions.length} mission${L.missions.length>1?'s':''}</span><span class="chip">Incident desk</span>`:''}<span class="chip">Boss · ${L.bossOps.length} attacks · 3 hearts</span></div>
+    <div class="steps4">${[['Learn',`${L.learn.length} hands-on lessons in lookalike tools`,L.learn.length],['Missions',`${L.missions.length} challenge${L.missions.length>1?'s':''} to try what you learned`,L.missions.length],['Incident desk','Fix broken things, against the clock',L.inc],['Boss',L.final?`${L.bossOps.length} attacks, one from every level. 3 hearts.`:`${L.bossOps.length} attacks. Pick the right fix. 3 hearts.`,1]].filter(x=>x[2]).map(([t,d],i)=>`<div class="s4"><span class="s4n">${i+1}</span><div><b>${t}</b><small>${d}</small></div></div>`).join('')}</div>
     ${st?`<div class="nstars">${[0,1,2].map(k=>`<span class="${k<st?'':'off'}">★</span>`).join('')}</div>`:''}</div>
     <div class="actbar"><button class="btn ghost" data-map>Map</button><button class="btn primary go" data-start>Start</button></div>`);
   scr.onclick=e=>{if(e.target.closest('[data-map]'))showMap();if(e.target.closest('[data-start]')){sfx('ok');start(i)}};
@@ -1208,13 +1285,17 @@ function brief(i){
 
 /* ================= level run ================= */
 function start(i){const L=LV[i];R={L,i,hearts:3,xp0:S.xp,ph:[...L.learn.map((_,k)=>['l',k]),...L.missions.map((_,k)=>['m',k]),...(L.inc?[['r']]:[]),['b']],p:0};phase()}
-const lvTop=()=>`<div class="lvtop"><button class="btn ghost small" data-quit aria-label="Quit to map">✕</button><div class="phases">${R.ph.map((_,k)=>`<i class="${k<R.p?'done':k===R.p?'cur':''}"></i>`).join('')}</div><span class="tag" style="margin:0">${R.L.final?'Final':'Lv '+(R.i+1)}</span></div>`;
+const PH={l:'Learn',m:'Missions',r:'Incident desk',b:'Boss'};
+// Level header: progress pills plus a named legend (Learn › Missions › Incident desk › Boss) showing where you are.
+const lvTop=()=>{const t=R.ph[R.p][0],kinds=[...new Set(R.ph.map(p=>p[0]))],all=R.ph.filter(p=>p[0]===t).length,n=R.ph.slice(0,R.p+1).filter(p=>p[0]===t).length;
+  return `<div class="lvtop"><button class="btn ghost small" data-quit aria-label="Quit to map">✕</button><div class="phases">${R.ph.map((_,k)=>`<i class="${k<R.p?'done':k===R.p?'cur':''}"></i>`).join('')}</div><span class="tag" style="margin:0">${R.L.final?'Final':'Lv '+(R.i+1)}</span></div>
+  <div class="legend">${kinds.map(x=>{const last=R.ph.map(p=>p[0]).lastIndexOf(x);return `<span class="lg ${x===t?'on':last<R.p?'done':''}">${last<R.p?'✓ ':''}${PH[x]}${x===t&&all>1?` <small>${n} of ${all}</small>`:''}</span>`}).join('<span class="lg-ar" aria-hidden="true">›</span>')}</div>`};
 function phase(){const[t,k]=R.ph[R.p];scr.onclick=e=>{if(e.target.closest('[data-quit]'))showMap()};(t==='l'?lesson:t==='m'?mission:t==='r'?rapid:boss)(k)}
 
 function lesson(k){
   const s=R.L.learn[k],last=k===R.L.learn.length-1;
-  go(lvTop()+`<div class="obj">${BOT}<div><span class="tag">Learn · ${k+1} of ${R.L.learn.length}</span><b>${s.p}</b></div></div><div class="card" data-w></div><div data-intel></div><div class="actbar"><span></span><button class="btn primary" data-next disabled>Try it first</button></div>`);
-  const nb=$('[data-next]');let d=false;
+  go(lvTop()+`<div class="obj">${BOT}<div><span class="tag">Learn · ${k+1} of ${R.L.learn.length}</span><b>${s.p}</b></div></div><div class="card" data-w></div><div data-intel></div><div class="actbar"><span></span><button class="btn primary" data-next disabled>Do the task above</button></div>`);
+  const nb=$('[data-next]');let d=false;G.hint=s.p;
   ENG[s.t]($('[data-w]'),()=>{if(d)return;d=true;$('[data-intel]').innerHTML=`<div class="intel"><span class="gem"><span>!</span></span><div><span class="tag">Key idea</span><br>${s.aha}</div></div>`;
     nb.disabled=false;nb.textContent=last?'Start the missions':'Next';nb.classList.add('go');xp(5)},s.a);
   nb.onclick=()=>{if(last)toast('Now use what you learned!');nextPhase()};
@@ -1224,15 +1305,15 @@ function nextPhase(){R.p++;phase()}
 function mission(k){
   const[obj,w,intel,hint]=R.L.missions[k];
   go(lvTop()+`<div class="obj">${BOT}<div><span class="tag">Mission ${k+1} of ${R.L.missions.length}</span><b>${obj}</b></div><span class="check" aria-hidden="true"></span></div><div class="card" data-w></div><div data-intel></div>
-  <div class="actbar">${hint?'<button class="btn ghost" data-hint>Hint</button>':'<span></span>'}<button class="btn primary" data-next disabled>Complete the mission</button></div>`);
-  const nb=$('[data-next]');let done=false;
+  <div class="actbar">${hint?'<button class="btn ghost" data-hint>Hint</button>':'<span></span>'}<button class="btn primary" data-next disabled>Complete the mission above</button></div>`);
+  const nb=$('[data-next]');let done=false;G.hint=hint||obj;
   w($('[data-w]'),()=>{if(done)return;done=true;$('.obj').classList.add('done');$('.check').textContent='✓';$('[data-intel]').innerHTML=`<div class="intel"><span class="gem"><span>!</span></span><div><span class="tag">Unlocked</span><br>${intel}</div></div>`;
     nb.disabled=false;nb.textContent='Continue';nb.classList.add('go');xp(20);sfx('win');mood('happy')});
   nb.onclick=()=>nextPhase();
   if(hint)$('[data-hint]').onclick=()=>toast(hint);
 }
 
-const opView=(o,ord)=>`<p class="q" style="margin-bottom:10px">${o.s}</p>${simWin(o.w[0],simLines(o.w[1]),'opwin')}<div class="opts" style="margin-top:12px">${ord.map((k,n)=>`<button class="opt" data-a="${k}"><span class="L">${n+1}</span><span>${o.a[k][0]}</span></button>`).join('')}</div>`;
+const opView=(o,ord)=>`<p class="q" style="margin-bottom:10px">${o.s}</p>${simWin(o.w[0],simLines(o.w[1]),'opwin')}<div class="opts" style="margin-top:12px">${ord.map((k,n)=>`<button class="opt" data-a="${k}"><span class="L">${n+1}</span><span>${o.a[k][0]}</span></button>`).join('')}</div><p class="hint">Read the screen, then pick the best fix. Keys 1–${ord.length} work too.</p>`;
 // Plays the chosen action's outcome on the sim screen; a wrong pick also plays the better move. Returns true if best.
 function playOp(root,o,k){
   const g=o.a.findIndex(a=>a[2]),body=root.querySelector('.opwin .sim-body');root.querySelectorAll('.opt').forEach(b=>b.disabled=true);
@@ -1311,6 +1392,7 @@ function deck(){
 
 $('#home').onclick=()=>showMap();
 $('#deckBtn').onclick=()=>deck();
+$('#helpBtn').onclick=()=>{showMap();tour()};
 $('#snd').onclick=()=>{S.sound=!S.sound;save();hud();sfx('tap')};
 
 // self-checks for the logic that does math
@@ -1319,5 +1401,6 @@ console.assert(tokenize('unbelievably').length===3,'tokenize: long word splits i
 console.assert(Math.abs(apiCost(30,1500,400,3,15)-9.45)<1e-9,'apiCost: 30 msgs/day example');
 console.assert(LV.every(l=>[...l.bossOps,...(l.inc||[])].every(o=>o.a.filter(a=>a[2]).length===1)),'every scenario has exactly one best action');
 console.assert(LV.every(l=>l.final||l.learn.length&&l.learn.every(s=>ENG[s.t])),'every level has valid lessons');
+console.assert(LV.flatMap(l=>l.learn).filter(s=>s.t==='chat').every(({a})=>a.tasks.every(([,,sel])=>!sel||sel==='[data-new]'||a.chips.some(c=>sel===`[data-c="${c.id}"]`)||Object.keys(a.set||{}).some(k=>sel===`[data-s="${k}"]`))),'every chat task highlight points at a real control');
 hud();showMap();
 </script>
